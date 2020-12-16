@@ -1,0 +1,27 @@
+{
+  "name": "Genesis-Sale",
+  "version": "1.0.0",
+  "description": "",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "solc": "^0.7.5"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DistributedCollective/Genesis-Sale.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/DistributedCollective/Genesis-Sale/issues"
+  },
+  "homepage": "https://github.com/DistributedCollective/Genesis-Sale#readme"
+}
