@@ -1,4 +1,5 @@
 //SPDX-License-Identifier: MIT
+
 pragma solidity 0.7.5;
 
 import "../openzeppelin/Ownable.sol";
@@ -13,33 +14,35 @@ import "../mock/NFTHolders.sol";
 
 contract WhiteListReg is Ownable, NFTHolders {
   
-    mapping(address => bool) public whitelist;
+    mapping(address => bool) internal _whitelist;
+    mapping(address => bool) internal _blacklist;
     event AddedToWhiteList(address contributor);
     event RemovedFromWhiteList(address _contributor);
     
     constructor (address[] memory holders, uint[] memory balance) NFTHolders(holders, balance)  {}
     
-    function addToWhiteList (
+    function _addToWhiteList (
         address payable _contributor)
-        public
-        onlyOwner {
+        public {
         require(_contributor != address(0));
         require(
             balanceOf(_contributor) > 0,
             "only NFT Holders can participate in the crowdsale"
         );
-        whitelist[_contributor] = true;
+        require(_blacklist[_contributor] = true, "User that was removed from the whitelist cannot be re-added");
+        _whitelist[_contributor] = true;
         emit AddedToWhiteList(_contributor);
     }
 
-    function removeFromWhiteList(address _contributor) public onlyOwner {
+    function _removeFromWhiteList(address _contributor) public onlyOwner {
         require(_contributor != address(0));
-        delete whitelist[_contributor];
+        delete _whitelist[_contributor];
+        _blacklist[_contributor] = true;
         emit RemovedFromWhiteList(_contributor);
     }
 
     function isWhiteListed(address _contributor) public view returns (bool) {
-        return whitelist[_contributor];
+        return _whitelist[_contributor];
     }
 
 }
