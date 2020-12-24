@@ -11,7 +11,7 @@ pragma solidity 0.7.5;
      // balances[holders[2]]=balance[2]; 
   }
   
-  function balanceOf(address payable _address) public view returns(uint) {
+  function NFTbalanceOf(address payable _address) public view returns(uint) {
         return balances[_address];
     }
 }
