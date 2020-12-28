@@ -3,45 +3,30 @@ pragma solidity 0.7.5;
 
 import "../openzeppelin/SafeMath.sol";
 //import "./SafeMath.sol";
-import "./WhiteListReg.sol";
+import "./InvestorMaxPurchase.sol";
 import "./RSOVToken.sol";
 
-contract CrowdSale is WhiteListReg {
+contract CrowdSale is InvestorMaxPurchase {
     using SafeMath for uint256;
 
-    /**
+    /*
      * Event for token purchase logging
      * @param purchaser who paid for the tokens
-     * @param value weis paid for purchase
-     * @param amount amount of tokens purchased
+     * @param rate weis paid for purchase
+     * @param amountDeposit deposit amount
+     * @param amountToken Token received amount
      */
     event TokenPurchase(
         address payable indexed purchaser,
-        uint256 value,
-        uint256 amount
+        uint256 rate,
+        uint256 amountDeposit,
+        uint256 amountToken
     );
+    event Imburse(address payable indexed imbursePurchaser, uint256 amount);
     event CrowdSaleStarted(uint256 total, uint256 sale, uint256 minp);
-    event CrowdSaleparams(
-        uint256 total,
-        uint256 sale,
-        uint256 availble,
-        uint256 balInit,
-        uint256 balStart
-    );
-
-    struct Investor {
-        uint256 id;
-        address payable investorAddress;
-        uint256 maxDeposit;
-        uint256 actualDeposit;
-        uint256 tokenBalance;
-    }
-
-    mapping(address => Investor) investors;
-    mapping(address => bool) public investorsValid;
-    uint256 nextId = 1;
+    mapping(address => uint256) InvestorTotalDeposits; // the sum of all deposits per investor
     address public token;
-    address payable public admin;
+    //address payable public admin;
     address payable public sovrynAddress;
     uint256 public end;
     // How many token units a buyer gets per sat
@@ -53,8 +38,10 @@ contract CrowdSale is WhiteListReg {
     uint256 public availableTokens;
     uint256 public tokenTotalSupply;
     uint256 public minPurchase;
-    uint256 public maxPurchase;
+    //uint256 public maxPurchase;
     uint256 public balinit;
+    bool public saleEnded;
+    uint256 reimburseRBTC = 0;
 
     /**
      * @dev NFTRank uint256 array & maxDeposit uint256 array are params for resolveMaxDeposit method (WhiteListReg.sol)
@@ -63,30 +50,48 @@ contract CrowdSale is WhiteListReg {
      * @dev 2. NFTRank[i] > NFTRank[i+1]
      * @dev 3. NFTbalanceOf(_investor) >= NFTRank[0] => maxPurchase = maxDeposit[0]
      * @dev 4. NFTRank[i] > NFTbalanceOf(_investor) > NFTRank[i+1] => maxPurchase = maxDeposit[i+1]
-     */
+     * @dev extract HolderTopNFT mapping (holder address => top NFTrank address)
+     * @dev all the extraction (high gas) is done in the constructor
+     * InvestorMaxPurchase.sol input (uint256):
+     ** maxDepositList[] - array of maxDeposit of RBTC (in sat) per NFT rank.
+     * NFTHolders.sol Inputs (all addresses):
+     ** holders      [] - array of all holders addresses
+     ** NFTAddresses [] - array of 5 NFT's addresses
+     ** NFT0Holders  [] - all addresses that hold NFT0 (highest NFT Rank)
+     ** NFT1Holders  [] - all addresses that hold NFT1
+     ** NFT2Holders  [] - all addresses that hold NFT2
+     ** NFT3Holders  [] - all addresses that hold NFT3
+     ** NFT4Holders  [] - all addresses that hold NFT4 (lowest NFT Rank)
+     **/
     constructor(
-        uint256[] memory NFTRank,
-        uint256[] memory maxDeposit,
+        uint256[] memory maxDepositList,
+        address[] memory holders,
+        address[] memory NFTAddresses,
+        address[] memory NFT0Holders,
+        address[] memory NFT1Holders,
+        address[] memory NFT2Holders,
+        address[] memory NFT3Holders,
+        address[] memory NFT4Holders,
         address payable _sovrynAddress,
-        uint256 _totalSupply,
-        address[] memory whiteListMockAddress,
-        uint256[] memory whiteListMockBalance
+        uint256 _totalSupply
     )
         payable
-        WhiteListReg(
-            NFTRank,
-            maxDeposit,
-            whiteListMockAddress,
-            whiteListMockBalance
+        InvestorMaxPurchase(
+            maxDepositList,
+            holders,
+            NFTAddresses,
+            NFT0Holders,
+            NFT1Holders,
+            NFT2Holders,
+            NFT3Holders,
+            NFT4Holders
         )
-        //RSOVToken(_totalSupply)
     {
-        token = address(new RSOVToken(_totalSupply));
+        saleEnded = false;
+        token = address(new RSOVToken(_totalSupply, saleEnded));
         sovrynAddress = _sovrynAddress;
         tokenTotalSupply = RSOVToken(token).totalSupply();
-        //RSOVToken tokenAddr = RSOVToken(token);
-        //balinit = RSOVToken(token).balanceOf(msg.sender);
-        admin = msg.sender;
+        //admin = msg.sender;
     }
 
     /**
@@ -104,14 +109,6 @@ contract CrowdSale is WhiteListReg {
     ) external onlyOwner() saleNotActive() {
         crowdSaleSupply = _crowdSaleSupply;
 
-        emit CrowdSaleparams(
-            tokenTotalSupply,
-            crowdSaleSupply,
-            availableTokens,
-            balinit ,
-            RSOVToken(token).balanceOf(msg.sender)
-        );
-
         require(tokenTotalSupply > 0, "totalSupply should be  > 0");
         require(crowdSaleSupply > 0, "crowdSaleSupply should be > 0");
         require(
@@ -128,7 +125,6 @@ contract CrowdSale is WhiteListReg {
         rate = _rate;
         minPurchase = _minPurchase;
         emit CrowdSaleStarted(tokenTotalSupply, crowdSaleSupply, minPurchase);
-    
     }
 
     /**
@@ -136,51 +132,51 @@ contract CrowdSale is WhiteListReg {
      */
     function buy() external payable saleActive() {
         require(msg.value >= minPurchase, "must send more then minPurchase");
-        addToWhiteList(msg.sender);
-        require(isWhiteListed(msg.sender) == true, "only investors");
-        uint256 quantity = getTokenAmount(msg.value);
-        require(quantity <= availableTokens, "Not enough tokens left for sale");
-        require(msg.value <= maxPurchase, "must send less then maxPurchase");
-        // Investor have multiple deposits
-        if (investors[msg.sender].id > 0 && investors[msg.sender].id < nextId) {
-            require(
-                investors[msg.sender].actualDeposit.add(msg.value) <=
-                    maxPurchase,
-                "Sum of all deposits sent from msg.sender should be less then maxPurchase"
-            );
-            investors[msg.sender].actualDeposit = investors[msg.sender]
-                .actualDeposit
-                .add(msg.value);
-            investors[msg.sender].tokenBalance = investors[msg.sender]
-                .tokenBalance
-                .add(quantity);
+        maxPurchase = getMaxPurchase(msg.sender); // The max purchase allowed based on NFT Holding
+        uint256 depositAllowed =
+            maxPurchase.sub(InvestorTotalDeposits[msg.sender]); // The max allowed deposit after sub of former deposits of the same investor
+        maxPurchase = 0;
+        require(depositAllowed != 0, "Deposit is not allowed");
+        uint256 tokenQuantityAllowed = getTokenAmount(depositAllowed); // The max token allowed
+        if (tokenQuantityAllowed > availableTokens) {
+            tokenQuantityAllowed = availableTokens; //  cannot sell more than availble tokens of the sale
         }
-        // Investor first deposit
-        else {
-            investors[msg.sender] = Investor(
-                nextId,
-                msg.sender,
-                maxPurchase,
-                msg.value,
-                quantity
-            );
+        uint256 tokenQuantityRequest = getTokenAmount(msg.value); // The token amount the investor requests
+        if (tokenQuantityRequest > tokenQuantityAllowed) {
+            reimburseRBTC = (tokenQuantityRequest.sub(tokenQuantityAllowed))
+                .div(rate); //ReimburseRBTC > 0 if tokenRequest> tokenAllowed
+            tokenQuantityRequest = tokenQuantityAllowed;
         }
 
-        nextId = nextId.add(1);
-        availableTokens = availableTokens.sub(quantity);
-        satRaised = satRaised.add(msg.value);
+        availableTokens = availableTokens.sub(tokenQuantityRequest);
+        uint256 RBTCDepositRequest = (msg.value).sub(reimburseRBTC);
+        InvestorTotalDeposits[msg.sender] = InvestorTotalDeposits[msg.sender]
+            .add(RBTCDepositRequest);
+        satRaised = satRaised.add(RBTCDepositRequest);
         RSOVToken tokenInstance = RSOVToken(token);
-        emit TokenPurchase(msg.sender, rate, msg.value);
-        tokenInstance.transfer(msg.sender, quantity);
+        tokenInstance.transfer(msg.sender, tokenQuantityRequest);
+        emit TokenPurchase(
+            msg.sender,
+            rate,
+            RBTCDepositRequest,
+            tokenQuantityRequest
+        );
+        if (reimburseRBTC > 0) {
+            msg.sender.transfer(reimburseRBTC);
+            emit Imburse(msg.sender, reimburseRBTC);
+        }
     }
 
     /**
      * @dev   Add to whiteList and resolve max deposit of investor
      * @param investor address
      */
-    function addToWhiteList(address payable investor) internal {
-        maxPurchase = _addToWhiteList(investor);
-        investorsValid[investor] = true;
+    function getMaxPurchase(address payable investor)
+        internal
+        returns (uint256 maxPurchase)
+    {
+        maxPurchase = getInvestorMaxPurchase(investor);
+        return maxPurchase;
     }
 
     /**
@@ -195,21 +191,16 @@ contract CrowdSale is WhiteListReg {
         return _satAmount.mul(rate);
     }
 
-    /**
-     * @dev remove from whitelist (externally) by admin only
-     * @dev cannot re-add after an address was removed
-     * @param investor address
-     */
-    function removeFromWhiteList(address investor) external onlyOwner() {
-        _removeFromWhiteList(investor);
-        investorsValid[investor] = false;
+    function saleClosure(bool isSaleEnded) external onlyOwner() saleDone() {
+        RSOVToken tokenInstance = RSOVToken(token);
+        tokenInstance.saleClosure(isSaleEnded);
     }
 
     /**
      * @dev   Withdraw all Non sold tokens
      *
      */
-    function withdrawTokens() external onlyOwner() saleEnded() {
+    function withdrawTokens() external onlyOwner() saleDone() {
         uint256 tokensSovryn =
             tokenTotalSupply.sub(crowdSaleSupply).add(availableTokens);
         RSOVToken tokenInstance = RSOVToken(token);
@@ -217,10 +208,10 @@ contract CrowdSale is WhiteListReg {
     }
 
     /**
-     * @dev   Withdraw Funds
+     * @dev   Withdraw /all Funds
      *
      */
-    function withdrawFunds() external onlyOwner() saleEnded() {
+    function withdrawFunds() external onlyOwner() saleDone() {
         sovrynAddress.transfer(satRaised);
     }
 
@@ -228,10 +219,6 @@ contract CrowdSale is WhiteListReg {
         RSOVToken tokenInstance = RSOVToken(token);
         return tokenInstance.balanceOf(owner);
     }
-
-    //receive() external payable {
-    //    satBase = satBase.add(msg.value);
-    //    }
 
     modifier saleActive() {
         require(
@@ -246,16 +233,11 @@ contract CrowdSale is WhiteListReg {
         _;
     }
 
-    modifier saleEnded() {
+    modifier saleDone() {
         require(
             end > 0 && (block.timestamp >= end || availableTokens == 0),
             "Sale must have ended"
         );
-        _;
-    }
-
-    modifier onlyInvestors() {
-        require(isWhiteListed(msg.sender) == true, "only investors");
         _;
     }
 }

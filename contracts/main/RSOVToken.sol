@@ -2,8 +2,9 @@
 pragma solidity 0.7.5;
 
 import "../openzeppelin/SafeMath.sol";
-
+import "../openzeppelin/Ownable.sol";
 //import "./SafeMath.sol";
+//import "./Ownable.sol";
 
 interface ERC20Interface {
     function transfer(address to, uint256 tokens)
@@ -40,7 +41,7 @@ interface ERC20Interface {
     );
 }
 
-contract RSOVToken is ERC20Interface {
+contract RSOVToken is ERC20Interface, Ownable {
     string public constant NAME = "RSOVrynToken"; // Token Name
     string public constant SYMBOL = "RSOV"; // Token Symbol
     uint8 public constant DECIMALS = 18; // Token decimals
@@ -48,17 +49,27 @@ contract RSOVToken is ERC20Interface {
     uint256 public totalSupply_;
     mapping(address => uint256) public balances_;
     mapping(address => mapping(address => uint256)) public allowed;
+    address payable admin;
+    bool public isSaleEnded;
 
-    constructor(uint256 _totalSupply) {
+    constructor(uint256 _totalSupply, bool _isSaleEnded) {
         totalSupply_ = _totalSupply;
         balances_[msg.sender] = _totalSupply;
+        //admin = msg.sender;
+        isSaleEnded = _isSaleEnded;
     }
-
+    
+    function saleClosure(bool _isSaleEnded) external onlyOwner(){
+        //require(msg.sender == owner());
+        isSaleEnded = _isSaleEnded;
+    }
+    
     function transfer(address to, uint256 value)
         public
         override
         returns (bool)
     {
+        require (isSaleEnded || (msg.sender == owner()), 'Token Transfer is not allowed during the sale');
         require(balances_[msg.sender] >= value);
         balances_[msg.sender] -= value;
         balances_[to] += value;
@@ -85,6 +96,7 @@ contract RSOVToken is ERC20Interface {
         override
         returns (bool)
     {
+        require (isSaleEnded || (msg.sender == owner()), 'Token Transfer is not allowed during the sale');
         require(spender != msg.sender);
         allowed[msg.sender][spender] = value;
         emit Approval(msg.sender, spender, value);
