@@ -37,8 +37,7 @@ module.exports = {
         testnet: {
             provider: () => new HDWalletProvider(rskdeployer, "https://public-node.testnet.rsk.co"),
             network_id: 31,
-            // gasPrice: 60000000,
-            gasPrice: 20000000000,
+            gasPrice: 60000000,
             gas: 6800000
         },
     },
