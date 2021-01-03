@@ -5,6 +5,7 @@ import "../openzeppelin/SafeMath.sol";
 import "../openzeppelin/Ownable.sol";
 import "../openzeppelin/Context.sol";
 import "../openzeppelin/IERC20.sol";
+
 //import "./SafeMath.sol";
 //import "./Ownable.sol";
 //import "./Context.sol";
@@ -12,11 +13,11 @@ import "../openzeppelin/IERC20.sol";
 
 contract CSOVToken is Context, IERC20, Ownable {
     using SafeMath for uint256;
-    
+
     string private constant NAME = "CSOVrynToken"; // Token Name
     string private constant SYMBOL = "CSOV"; // Token Symbol
     uint8 private constant DECIMALS = 18; // Token decimals
-    
+
     bool public isSaleEnded;
     address payable saleAdmin;
     mapping(address => uint256) private _balances;
@@ -36,28 +37,28 @@ contract CSOVToken is Context, IERC20, Ownable {
      * All three of these values are immutable: they can only be set once during
      * construction.
      */
-    constructor(uint256 totalSupply_, bool _isSaleEnded)  {
+    constructor(uint256 totalSupply_) {
         _name = NAME;
         _symbol = SYMBOL;
         _decimals = DECIMALS;
         _mint(msg.sender, totalSupply_);
-        isSaleEnded = _isSaleEnded;
+        isSaleEnded = false;
         saleAdmin = msg.sender;
     }
 
     function saleClosure(bool _isSaleEnded) public {
-        require(msg.sender == saleAdmin, 'Only saleAdmin can close the sale');
-        if(!isSaleEnded){
-        isSaleEnded = _isSaleEnded;
+        require(msg.sender == saleAdmin, "Only saleAdmin can close the sale");
+        if (!isSaleEnded) {
+            isSaleEnded = _isSaleEnded;
         }
     }
-    
-    function setSaleAdmin(address payable _saleAdmin) public onlyOwner(){
+
+    function setSaleAdmin(address payable _saleAdmin) public onlyOwner() {
         saleAdmin = _saleAdmin;
-        transfer(_saleAdmin,balanceOf(msg.sender));
+        transfer(_saleAdmin, balanceOf(msg.sender));
     }
-    
-        /**
+
+    /**
      * @dev See {IERC20-transfer}.
      *
      * Requirements:
@@ -70,14 +71,17 @@ contract CSOVToken is Context, IERC20, Ownable {
         override
         returns (bool)
     {
-        require (isSaleEnded || (msg.sender == owner()) || msg.sender == saleAdmin, 'Token Transfer is not allowed during the sale');
+        require(
+            isSaleEnded || (msg.sender == owner()) || msg.sender == saleAdmin,
+            "Token Transfer is not allowed during the sale"
+        );
         require(_balances[msg.sender] >= value);
         _balances[msg.sender] -= value;
         _balances[to] += value;
         emit Transfer(msg.sender, to, value);
         return true;
     }
-    
+
     /**
      * @dev Returns the name of the token.
      */
@@ -113,14 +117,14 @@ contract CSOVToken is Context, IERC20, Ownable {
     /**
      * @dev See {IERC20-totalSupply}.
      */
-    function totalSupply() public override view returns (uint256) {
+    function totalSupply() public view override returns (uint256) {
         return _totalSupply;
     }
 
     /**
      * @dev See {IERC20-balanceOf}.
      */
-    function balanceOf(address account) public override view returns (uint256) {
+    function balanceOf(address account) public view override returns (uint256) {
         return _balances[account];
     }
 
@@ -129,9 +133,9 @@ contract CSOVToken is Context, IERC20, Ownable {
      */
     function allowance(address owner, address spender)
         public
+        view
         virtual
         override
-        view
         returns (uint256)
     {
         return _allowances[owner][spender];
@@ -153,7 +157,7 @@ contract CSOVToken is Context, IERC20, Ownable {
         _approve(_msgSender(), spender, amount);
         return true;
     }
- 
+
     /**
      * @dev See {IERC20-transferFrom}.
      *
