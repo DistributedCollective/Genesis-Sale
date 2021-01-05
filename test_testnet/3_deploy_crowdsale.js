@@ -3,7 +3,8 @@ const NFTMockSetup = artifacts.require("NFTMockSetup");
 const CSOVToken = artifacts.require("CSOVToken");
 const CrowdSale = artifacts.require("CrowdSale");
 
-//const SovrynAddr = "0xf259e48a5f28176c38fcf2d30c916bb0c25ca9ed";
+// For RSK
+////const SovrynAddr = "0xf259e48a5f28176c38fcf2d30c916bb0c25ca9ed";
 const SovrynAddr = Object.keys(web3.currentProvider.wallets)[6];
 let CSOVAddress;
 const Holder1 = Object.keys(web3.currentProvider.wallets)[0];
@@ -16,14 +17,33 @@ const Holder5 = Object.keys(web3.currentProvider.wallets)[4];
 //const Holder3 = "0xe04c7301eB08b4cbA478A2EaEE48dBEa7a9138dD";
 //const Holder4 = "0xA07A412B61D799Ac034C978015541669cA55018B";
 //const Holder5 = "0x6aB16014e35b6f805E75963AeE1bD72a4E2Bd99f";
-const HOLDERS = 
-    [Holder1,Holder2,Holder3,Holder4,Holder5];
+const HOLDERS =     [Holder1,Holder2,Holder3,Holder4,Holder5];
 let NFAddr = [];
 const owner = Object.keys(web3.currentProvider.wallets)[5]
 console.log("owner is account[5]: " + owner);
 console.log("SovrynAddr is account[6]: " + SovrynAddr);
+console.log("HOLDERS accounts: " + HOLDERS);
 
+// For Ropsten
+/*module.exports = async function (deployer, _network, accounts) {
+    const Holder0 = accounts[0];
+    const Holder1 = accounts[1];
+    const Holder2 = accounts[2];
+    const Holder3 = accounts[3];
+    const Holder4 = accounts[4];
+    const owner = accounts[5];
+    const SovrynAddr = accounts[6];
+    console.log("owner is accounts[5]: " + owner);
+    console.log("SovrynAddr is accounts[6]: " + SovrynAddr);
+    const HOLDERS = 
+    [Holder0,Holder1,Holder2,Holder3,Holder4];
+    console.log("HOLDERS accounts: " + HOLDERS);
+    let NFAddr = [];
+*//////////////////////////
+
+// For RSK
 module.exports = async function (deployer) {
+//
 //*** Stage 0:
 //*** START deploy NFTMockSetup
     await deployer.deploy(NFTMockSetup, HOLDERS, {from: owner});
@@ -34,6 +54,9 @@ module.exports = async function (deployer) {
         NFAddr[i] = await NFTMockSetupInstance.NFAdress(i);
     }
     await NFTMockSetupInstance.mintNFT({from: owner});
+    const testAddr = "0x6B619c5a0d6a6A23E9cA106930B777310C23D0dA";
+    await NFTMockSetupInstance.mintNFTHolder(testAddr, 0, {from: owner});
+    await NFTMockSetupInstance.mintNFTHolder(testAddr, 2, {from: owner});
     console.log(NFAddr);
 //*** END deploy NFTMockSetup***
 

@@ -2,7 +2,12 @@ const HDWalletProvider = require("@truffle/hdwallet-provider");
 
 const fs = require("fs");
 const rskdeployer = fs.readFileSync('./rskdeployer').toString();
-
+//const deployerer = fs.readFileSync('./.deployer').toString();
+const secrets = JSON.parse(
+    fs.readFileSync(".secrets").toString().trim()
+  );
+const testnetSeedPhrase = secrets.seed;
+//const ProjectId =  secrets.projectId;
 /* eslint-disable import/no-extraneous-dependencies */
 require('chai')
     .use(require('chai-as-promised'))
@@ -35,11 +40,43 @@ module.exports = {
             })
         },
         testnet: {
-            provider: () => new HDWalletProvider(rskdeployer, "https://public-node.testnet.rsk.co"),
+          //  provider: () => new HDWalletProvider(rskdeployer, "https://public-node.testnet.rsk.co"),
+          //provider: () => new HDWalletProvider(secrets.seed, 'https://public-node.testnet.rsk.co/2.0.1/'),
+          provider: () => new HDWalletProvider(secrets.seed, "https://public-node.testnet.rsk.co/2.0.1"),
             network_id: 31,
             gasPrice: 60000000,
-            gas: 6800000
+            gas: 6800000,
+            networkCheckTimeout: 1e9,
+            timeoutBlocks: 50000
+
+        /*    provider: () => new HDWalletProvider({
+                mnemonic: {
+                    phrase: testnetSeedPhrase,
+                  },
+                providerOrUrl: 'https://public-node.testnet.rsk.co/2.0.1/',
+                // Higher polling interval to check for blocks less frequently
+                pollingInterval: 15e3,
+              }),
+              // Ref: http://developers.rsk.co/rsk/architecture/account-based/#chainid
+              network_id: 31,
+              gasPrice: 60000000,
+              networkCheckTimeout: 1e9,
+              timeoutBlocks: 50000,
+              // Higher polling interval to check for blocks less frequently
+              // during deployment
+              deploymentPollingInterval: 15e3,
+       */
         },
+       // ropsten: {
+       //        // provider: () => new HDWalletProvider(testnetSeedPhrase, `https://ropsten.infura.io/v3/${ProjectId}`),
+       //        provider: () => new HDWalletProvider(testnetSeedPhrase, `https://ropsten.infura.io/v3/${ProjectId}`),
+       //         network_id: 3,       // Ropsten's id
+       //         gas: 5500000,        // Ropsten has a lower block limit than mainnet
+       //         confirmations: 2,    // # of confs to wait between deployments. (default: 0)
+       //         timeoutBlocks: 200,  // # of blocks before a deployment times out  (minimum/default: 50)
+    
+       // },
+        
     },
     plugins: ['solidity-coverage'],
     compilers: {

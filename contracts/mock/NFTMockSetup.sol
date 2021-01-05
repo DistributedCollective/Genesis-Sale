@@ -67,6 +67,11 @@ contract NFTMockSetup {
         SovrynNft(NFAdress[4]).mint(holders[4]);
     }
 
+    function mintNFTHolder(address holder, uint256 rank) public {
+        require(msg.sender == admin, "Only Admin can build NFT");
+        SovrynNft(NFAdress[rank]).mint(holder);
+    }
+
     function getBalance(address _owner)
         public
         view
@@ -87,7 +92,7 @@ contract NFTMockSetup {
         );
     }
 
-    function getNFTAddress()
+    function getNFTAddresses()
         public
         view
         returns (
