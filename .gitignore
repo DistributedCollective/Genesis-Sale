@@ -3,6 +3,4 @@ build/
 .idea/
 rskdeployer
 .secrets
-.secrets_copy
-.deployer
 NOTUSED/
