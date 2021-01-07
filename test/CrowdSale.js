@@ -2,8 +2,8 @@
 //const NFTMockSetup = artifacts.require("NFTMockSetup");
 const CSOVToken = artifacts.require("CSOVToken");
 const CrowdSale = artifacts.require("CrowdSale");
-let tokenAddr = "0xf0B87C57B4f1fF0614141dd5d66aedc7CA07fA74";
-let crowdsaleAddr = "0x2CD8729a312a560Afb18CCd73bbC97cE52aa3156";
+let tokenAddr = "0xEBF51cd66e1d91Eec9cb38d5964E724B95DFbC1c";
+let crowdsaleAddr = "0x42dC0747727C5c1b248121e87E10Ea164a5e5c36";
 let token;
 let crowd;
 let rate;
@@ -40,7 +40,7 @@ console.log("account6 is: " + account6);
 it('should setup var', async () => {
   token = await CSOVToken.at(tokenAddr);
   crowd = await CrowdSale.at(crowdsaleAddr);
-  /*let totalsupply = await crowd.tokenTotalSupply();
+  let totalsupply = await crowd.tokenTotalSupply();
   console.log("crowd.tokenTotalSupply(): " + totalsupply);
   let bal = await token.balanceOf(account1);
   console.log("bal of account1 should be 0: " + bal);
@@ -48,7 +48,7 @@ it('should setup var', async () => {
   console.log("bal of owner read from CSOVToken (account5) is : " + bal);
   let bal1 = await crowd.balanceOf(account5);
   console.log("bal of owner read from crowdsale (account5) is : " + bal1);
-  */
+  
 });
 /*
 it('should fail - Ownable: caller is not the owner', async () => {
@@ -64,7 +64,7 @@ it('should fail - Sale has NOT ended', async () => {
   await  crowd.withdrawFunds({from: account5});
 });
 */
-/*
+
 it('should start the CrowdSale', async () => {
   token = await CSOVToken.at(tokenAddr);
   crowd = await CrowdSale.at(crowdsaleAddr);
@@ -102,11 +102,11 @@ it('should buy and receive tokens', async () => {
   console.log("account1 balance is: " + balance1);
   console.log("account2 amount= 0.0015*50000 = 75 = " + amount2.mul(web3.utils.toBN(rate)));
   console.log("account2 balance is: " + balance2);
-  const totalsat = await crowd.satRaised();
-  console.log("total sat deposit is 0.001+0.0015 = 0.0025 = " + totalsat);
+  const totalwei = await crowd.weiRaised();
+  console.log("total wei deposit is 0.001+0.0015 = 0.0025 = " + totalwei);
   //assert(balance1.eq(amount1.mul(web3.utils.toBN(rate))));
   //assert(balance2.eq(amount2.mul(web3.utils.toBN(rate))));    
-  //assert((amount1+amount2).eq(totalsat));
+  //assert((amount1+amount2).eq(totalwei));
 });
 
 it('should buy and imburse: Investor deposit more then maxPurchase', async () => {
@@ -121,11 +121,11 @@ it('should buy and imburse: Investor deposit more then maxPurchase', async () =>
   console.log("account1 RBTC balance after, should be 0.0005 less: " + RBTCbalance1After);
   console.log("account1 Token balance before: " + Tokenbalance1Before);
   console.log("account1 Token balance after, should be 25 more: " + Tokenbalance1After);
-  const totalsat = await crowd.satRaised();
-  console.log("total sat deposit is 0.001+0.0015 +0.0005 = 0.003 = " + totalsat);    
+  const totalwei = await crowd.weiRaised();
+  console.log("total wei deposit is 0.001+0.0015 +0.0005 = 0.003 = " + totalwei);    
       //assert(balance2.eq(amountAllowed.mul(web3.utils.toBN(rate))));      
 });
-*/
+
 /*it('should buy and imburse: Investor deposit more then maxPurchase', async () => {
   const amount4 = web3.utils.toBN(web3.utils.toWei('0.001'));
   const amountAllowed = web3.utils.toBN(web3.utils.toWei('0.0005'));
@@ -138,8 +138,8 @@ it('should buy and imburse: Investor deposit more then maxPurchase', async () =>
   console.log("account4 RBTC balance after, should be 0.0005 less: " + RBTCbalance4After);
   console.log("account4 Token balance before: " + Tokenbalance4Before);
   console.log("account4 Token balance after, should be 25 more: " + Tokenbalance4After);
-  const totalsat = await crowd.satRaised();
-  console.log("total sat deposit is 0.001+0.0015 +0.0005 + 0.0005 = 0.0035 = " + totalsat);    
+  const totalwei = await crowd.weiRaised();
+  console.log("total wei deposit is 0.001+0.0015 +0.0005 + 0.0005 = 0.0035 = " + totalwei);    
       //assert(balance2.eq(amountAllowed.mul(web3.utils.toBN(rate))));      
 });
 */
@@ -155,20 +155,21 @@ it('should buy and imburse: Investor deposit more then maxPurchase', async () =>
   console.log("account3 RBTC balance after, should be 0.0005 less: " + RBTCbalance3After);
   console.log("account3 Token balance before: " + Tokenbalance3Before);
   console.log("account3 Token balance after, should be 25 more: " + Tokenbalance3After);
-  const totalsat = await crowd.satRaised();
-  console.log("total sat deposit is 0.001+0.0015 +0.0005 + 0.0005 +0.001= 0.0045 = " + totalsat);    
+  const totalwei = await crowd.weiRaised();
+  console.log("total wei deposit is 0.001+0.0015 +0.0005 + 0.0005 +0.001= 0.0045 = " + totalwei);    
 });
 */
 /*it('Should Withdraw Funds', async () => {
-  const totalsat = await crowd.satRaised();
-  console.log( "totalsat raised: "  + totalsat);
-  const balanceSatOutBefore = await web3.eth.getBalance(account5);
+  const totalwei = await crowd.weiRaised();
+  console.log( "totalwei raised: "  + totalwei);
+  const balanceweiOutBefore = await web3.eth.getBalance(account5);
   await crowd.withdrawFunds({ from: account5 });
-  const balanceSatOutAfter = await web3.eth.getBalance(account5);
-  console.log(" balanceSatOutBefore sovrynaddress: " + balanceSatOutBefore);
-  console.log(" balanceSatOutAfter sovrynaddress: " + balanceSatOutAfter);
+  const balanceweiOutAfter = await web3.eth.getBalance(account5);
+  console.log(" balanceweiOutBefore sovrynaddress: " + balanceweiOutBefore);
+  console.log(" balanceweiOutAfter sovrynaddress: " + balanceweiOutAfter);
 });
 */
+/*
 it('Should close Sale', async () => {
   let saleEnd = await token.isSaleEnded();
   console.log("isSaleEnded before closure= "+ isSaleEnded);
@@ -176,7 +177,7 @@ it('Should close Sale', async () => {
   saleEnd = await token.isSaleEnded();
   console.log("isSaleEnded after closure= "+ isSaleEnded);
 });
-
+*/
 /*
 it('should fail - Sale has NOT ended', async () => {
   await  crowd.withdrawFunds({from: account5});
@@ -382,16 +383,16 @@ const totalSupply = web3.utils.toWei('300');
       );
     });
 
-    it('should calculate satRaised', async () => {
+    it('should calculate weiRaised', async () => {
        const investor1 = accounts[1];
        const amount1 = web3.utils.toBN(web3.utils.toWei('0.002'));      
        await crowdsale.buy({from: investor1, value: amount1});
-       let satraised = await crowdsale.satRaised();
-       assert(satraised.eq(amount1));
+       let weiRaised = await crowdsale.weiRaised();
+       assert(weiRaised.eq(amount1));
        await crowdsale.buy({from: investor1, value: amount1});
-       satraised = await crowdsale.satRaised();
+       weiRaised = await crowdsale.weiRaised();
        const sumvalue = amount1.add(amount1); 
-       assert(satraised.eq(sumvalue));
+       assert(weiRaised.eq(sumvalue));
     });
     it('Should NOT Withdraw Tokens if not admin', async () => {
         const investor1 = accounts[1];
@@ -437,13 +438,13 @@ const totalSupply = web3.utils.toWei('300');
       const investor2 = accounts[2];
       const amount2 = web3.utils.toBN(web3.utils.toWei('0.005'));
       await crowdsale.buy({ from: investor2, value: amount2 });
-      const balanceSatOutBefore = await web3.eth.getBalance(accounts[8]);
+      const balanceweiOutBefore = await web3.eth.getBalance(accounts[8]);
       await crowdsale.withdrawFunds({ from: accounts[9] });
-      const balanceSatOutAfter = await web3.eth.getBalance(accounts[8]);
-      console.log(" balanceSatOutBefore sovrynaddress: " + balanceSatOutBefore);
-      console.log(" balanceSatOutAfter sovrynaddress: " + balanceSatOutAfter);
+      const balanceweiOutAfter = await web3.eth.getBalance(accounts[8]);
+      console.log(" balanceweiOutBefore sovrynaddress: " + balanceweiOutBefore);
+      console.log(" balanceweiOutAfter sovrynaddress: " + balanceweiOutAfter);
       const amountAll = amount1.add(amount2);
-      const amountAllActual = balanceSatOutAfter.sub(balanceSatOutBefore);
+      const amountAllActual = balanceweiOutAfter.sub(balanceweiOutBefore);
       console.log( "amountAll: "  + amountAll);
       console.log( "amountAllActual: "  + amountAllActual);
       assert(amountAll.eq(amountAllActual));
@@ -811,16 +812,16 @@ contract('CrowdSale', (accounts) => {
       );
     });
 
-    it('should calculate satRaised', async () => {
+    it('should calculate weiRaised', async () => {
        const investor1 = accounts[1];
        const amount1 = web3.utils.toBN(web3.utils.toWei('0.2'));      
        await crowdsale.buy({from: investor1, value: amount1});
-       let satraised = await crowdsale.satRaised();
-       assert(satraised.eq(amount1));
+       let weiRaised = await crowdsale.weiRaised();
+       assert(weiRaised.eq(amount1));
        await crowdsale.buy({from: investor1, value: amount1});
-       satraised = await crowdsale.satRaised();
+       weiRaised = await crowdsale.weiRaised();
        const sumvalue = amount1.add(amount1); 
-       assert(satraised.eq(sumvalue));
+       assert(weiRaised.eq(sumvalue));
     });
     it('Should NOT Withdraw Tokens if not admin', async () => {
         const investor1 = accounts[1];
@@ -866,13 +867,13 @@ contract('CrowdSale', (accounts) => {
       const investor2 = accounts[2];
       const amount2 = web3.utils.toBN(web3.utils.toWei('0.5'));
       await crowdsale.buy({ from: investor2, value: amount2 });
-      const balanceSatOutBefore = await web3.eth.getBalance(accounts[8]);
+      const balanceweiOutBefore = await web3.eth.getBalance(accounts[8]);
       await crowdsale.withdrawFunds({ from: accounts[9] });
-      const balanceSatOutAfter = await web3.eth.getBalance(accounts[8]);
-      console.log(" balanceSatOutBefore sovrynaddress: " + balanceSatOutBefore);
-      console.log(" balanceSatOutAfter sovrynaddress: " + balanceSatOutAfter);
+      const balanceweiOutAfter = await web3.eth.getBalance(accounts[8]);
+      console.log(" balanceweiOutBefore sovrynaddress: " + balanceweiOutBefore);
+      console.log(" balanceweiOutAfter sovrynaddress: " + balanceweiOutAfter);
       const amountAll = amount1.add(amount2);
-      const amountAllActual = balanceSatOutAfter.sub(balanceSatOutBefore);
+      const amountAllActual = balanceweiOutAfter.sub(balanceweiOutBefore);
       console.log( "amountAll: "  + amountAll);
       console.log( "amountAllActual: "  + amountAllActual);
       assert(amountAll.eq(amountAllActual));

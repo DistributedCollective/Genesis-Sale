@@ -1,13 +1,11 @@
 const HDWalletProvider = require("@truffle/hdwallet-provider");
 
 const fs = require("fs");
-const rskdeployer = fs.readFileSync('./rskdeployer').toString();
-//const deployerer = fs.readFileSync('./.deployer').toString();
 const secrets = JSON.parse(
     fs.readFileSync(".secrets").toString().trim()
   );
 const testnetSeedPhrase = secrets.seed;
-//const ProjectId =  secrets.projectId;
+const ProjectId =  secrets.projectId;
 /* eslint-disable import/no-extraneous-dependencies */
 require('chai')
     .use(require('chai-as-promised'))
@@ -40,14 +38,14 @@ module.exports = {
             })
         },
         testnet: {
-          //  provider: () => new HDWalletProvider(rskdeployer, "https://public-node.testnet.rsk.co"),
           //provider: () => new HDWalletProvider(secrets.seed, 'https://public-node.testnet.rsk.co/2.0.1/'),
-          provider: () => new HDWalletProvider(secrets.seed, "https://public-node.testnet.rsk.co/2.0.1"),
-            network_id: 31,
+          //provider: () => new HDWalletProvider(secrets.seed, "https://testnet.sovryn.app/rpc"),
+          provider: () => new HDWalletProvider(secrets.seed, "wss://testnet.sovryn.app/ws"),
+          network_id: 31,
             gasPrice: 60000000,
-            gas: 6800000,
+            gas: 5900000,
             networkCheckTimeout: 1e9,
-            timeoutBlocks: 50000
+            timeoutBlocks: 500000
 
         /*    provider: () => new HDWalletProvider({
                 mnemonic: {
@@ -81,7 +79,7 @@ module.exports = {
     plugins: ['solidity-coverage'],
     compilers: {
         solc: {
-            version: '0.7.5',
+            version: '0.6.2',
             settings: {
                 optimizer: {
                     enabled: true,
