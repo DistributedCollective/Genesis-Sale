@@ -1,17 +1,18 @@
 //SPDX-License-Identifier: MIT
-pragma solidity 0.7.5; 
+pragma solidity 0.6.2;
 
-import "../openzeppelin/SafeMath.sol";
-import "../openzeppelin/Ownable.sol";
-import "../openzeppelin/IERC20.sol";
 
+import "openzeppelin-solidity/contracts/access/Ownable.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 //import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/IERC721.sol";
+//import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/IERC20.sol";
+//import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/math/SafeMath.sol";
+//import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/Ownable.sol";
+
 import "./CSOVToken.sol";
 
-//import "./SafeMath.sol";
-//import "./Ownable.sol";
-//import "./IERC20.sol";
 
 contract CrowdSale is Ownable {
     using SafeMath for uint256;
@@ -31,24 +32,24 @@ contract CrowdSale is Ownable {
     event CrowdSaleStarted(uint256 total, uint256 sale, uint256 minp);
     address[] NFTAddresses;
     mapping(address => uint256) MaxDepositPerNFT;
-    mapping(address => uint256) InvestorTotalDeposits; // the sum of all deposits per investor
+    mapping(address => uint256) public InvestorTotalDeposits; // the sum of all deposits per investor
     address public token;
-    //address payable public admin;
     address payable public sovrynAddress;
     uint256 public end;
-    // How many token units a buyer gets per sat
+    // How many token units a buyer gets per wei
     uint256 public rate;
-    // Amount of sat raised
-    uint256 public satRaised = 0;
+    // Amount of wei raised
+    uint256 public weiRaised = 0;
     uint256 public crowdSaleSupply;
     uint256 public availableTokens;
     uint256 public tokenTotalSupply;
     uint256 public minPurchase;
     bool public saleEnded;
-    uint256 reimburseRBTC = 0;
+    uint256 public reimburseRBTC = 0;
+    bool public isStopSale = false;
 
     /**
-     ** maxDepositList[] - array of maxDeposit of RBTC (in sat) per NFT. maxDepositList[i] > maxDepositList[i+1]
+     ** maxDepositList[] - array of maxDeposit of RBTC (in wei) per NFT. maxDepositList[i] > maxDepositList[i+1]
      ** NFTAddresses [] - array of NFT's deployed contracts addresses
      **/
     constructor(
@@ -56,7 +57,7 @@ contract CrowdSale is Ownable {
         address[] memory _NFTAddresses,
         uint256[] memory maxDepositList,
         address payable _sovrynAddress
-    ) payable {
+    ) public payable {
         NFTAddresses = _NFTAddresses;
         saleEnded = false;
         token = CSOVAddress;
@@ -104,6 +105,12 @@ contract CrowdSale is Ownable {
     function buy() external payable saleActive() {
         require(msg.value >= minPurchase, "must send more then minPurchase");
         uint256 maxPurchase = getMaxPurchase(msg.sender); // The max purchase allowed based on NFT Holding
+        require(maxPurchase > 0, "The User does NOT hold NFT");
+        uint256 localminPurchase = 0;
+        if(InvestorTotalDeposits[msg.sender] == 0) {
+            localminPurchase = maxPurchase.div(2);
+            require(msg.value >= localminPurchase,"User must send more than maxPurchase/2");
+        }
         uint256 depositAllowed =
             maxPurchase.sub(InvestorTotalDeposits[msg.sender]); // The max allowed deposit after sub of former deposits of the same investor
         maxPurchase = 0;
@@ -122,7 +129,7 @@ contract CrowdSale is Ownable {
         uint256 RBTCDepositRequest = (msg.value).sub(reimburseRBTC);
         InvestorTotalDeposits[msg.sender] = InvestorTotalDeposits[msg.sender]
             .add(RBTCDepositRequest);
-        satRaised = satRaised.add(RBTCDepositRequest);
+        weiRaised = weiRaised.add(RBTCDepositRequest);
         CSOVToken tokenInstance = CSOVToken(token);
         tokenInstance.transfer(msg.sender, tokenQuantityRequest);
         emit TokenPurchase(msg.sender, rate, RBTCDepositRequest);
@@ -137,7 +144,7 @@ contract CrowdSale is Ownable {
      * @param investor address
      */
     function getMaxPurchase(address payable investor)
-        internal
+        public
         view
         returns (uint256 maxpurchase)
     {
@@ -148,25 +155,27 @@ contract CrowdSale is Ownable {
                 break;
             }
         }
-        require(maxpurchase > 0, "The User does NOT hold NFT");
+        //require moved to buy function, to expose getMaxPurchase to public FE.
+        //require(maxpurchase > 0, "The User does NOT hold NFT");
         return (maxpurchase);
     }
 
     /**
      * @dev  calculate token amount
-     * @param _satAmount - The sat deposit value
+     * @param _weiAmount - The wei deposit value
      */
-    function getTokenAmount(uint256 _satAmount)
+    function getTokenAmount(uint256 _weiAmount)
         internal
         view
         returns (uint256)
     {
-        return _satAmount.mul(rate);
+        return _weiAmount.mul(rate);
     }
 
     function saleClosure(bool isSaleEnded) external onlyOwner() saleDone() {
         CSOVToken tokenInstance = CSOVToken(token);
         tokenInstance.saleClosure(isSaleEnded);
+        saleEnded = true;
     }
 
     /**
@@ -185,7 +194,8 @@ contract CrowdSale is Ownable {
      *
      */
     function withdrawFunds() external onlyOwner() saleDone() {
-        sovrynAddress.transfer(satRaised);
+          sovrynAddress.transfer(address(this).balance);
+          // sovrynAddress.transfer(weiRaised);}
     }
 
     function balanceOf(address owner) external view returns (uint256) {
@@ -193,9 +203,13 @@ contract CrowdSale is Ownable {
         return tokenInstance.balanceOf(owner);
     }
 
+    function stopSell(bool _isStopSale) external onlyOwner() {
+        isStopSale = _isStopSale;
+    }
+    
     modifier saleActive() {
         require(
-            end > 0 && block.timestamp < end && availableTokens > 0,
+            !isStopSale && (end > 0 && block.timestamp < end && availableTokens > 0),
             "Sale must be active"
         );
         _;
@@ -208,7 +222,7 @@ contract CrowdSale is Ownable {
 
     modifier saleDone() {
         require(
-            end > 0 && (block.timestamp >= end || availableTokens == 0),
+            isStopSale || (end > 0 && (block.timestamp >= end || availableTokens == 0)),
             "Sale has NOT ended"
         );
         _;
