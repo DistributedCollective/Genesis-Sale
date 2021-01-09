@@ -47,6 +47,14 @@ contract CrowdSale is Ownable {
     bool public saleEnded;
     uint256 public reimburseRBTC = 0;
     bool public isStopSale = false;
+    
+    /** the admin wallet is allowed to assign tokens to BTC investors*/
+    address public admin;
+    
+    modifier onlyAdmin(){
+        require(msg.sender == admin, "unauthorized");
+        _;
+    }
 
     /**
      ** maxDepositList[] - array of maxDeposit of RBTC (in wei) per NFT. maxDepositList[i] > maxDepositList[i+1]
@@ -56,7 +64,8 @@ contract CrowdSale is Ownable {
         address CSOVAddress,
         address[] memory _NFTAddresses,
         uint256[] memory maxDepositList,
-        address payable _sovrynAddress
+        address payable _sovrynAddress,
+        address payable adminAddress
     ) public payable {
         NFTAddresses = _NFTAddresses;
         saleEnded = false;
@@ -66,6 +75,7 @@ contract CrowdSale is Ownable {
         for (uint256 i = 0; i < NFTAddresses.length; i++) {
             MaxDepositPerNFT[NFTAddresses[i]] = maxDepositList[i];
         }
+        admin = adminAddress;
     }
 
     /**
@@ -137,6 +147,21 @@ contract CrowdSale is Ownable {
             msg.sender.transfer(reimburseRBTC);
             emit Imburse(msg.sender, reimburseRBTC);
         }
+    }
+    
+    /**
+     * @notice assigns token to a BTC investor
+     * @dev only callable by the admin
+     * @param investor the address of the BTC investor
+     * @param amountBTC the amount of BTC transfered with 18 decimals
+     * */
+    function assignTokens(address investor, uint amountBTC) external onlyAdmin saleActive{
+        uint numTokens = getTokenAmount(amountBTC);
+        //no partial investments for btc investors to keep our accounting simple
+        require(numTokens < availableTokens, "amount needs to be smaller than the number of available tokens");
+        availableTokens = availableTokens.sub(numTokens);
+        CSOVToken tokenInstance = CSOVToken(token);
+        tokenInstance.transfer(investor, numTokens);
     }
 
     /**
