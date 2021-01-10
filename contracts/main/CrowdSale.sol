@@ -24,7 +24,7 @@ contract CrowdSale is Ownable {
      * @param amount amount of tokens purchased
      */
     event TokenPurchase(
-        address payable indexed purchaser,
+        address indexed purchaser,
         uint256 value,
         uint256 amount
     );
@@ -160,6 +160,8 @@ contract CrowdSale is Ownable {
         //no partial investments for btc investors to keep our accounting simple
         require(numTokens < availableTokens, "amount needs to be smaller than the number of available tokens");
         availableTokens = availableTokens.sub(numTokens);
+        weiRaised = weiRaised.add(amountBTC);
+        emit TokenPurchase(investor, rate, amountBTC);
         CSOVToken tokenInstance = CSOVToken(token);
         tokenInstance.transfer(investor, numTokens);
     }
