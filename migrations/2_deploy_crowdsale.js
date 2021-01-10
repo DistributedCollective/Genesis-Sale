@@ -12,7 +12,7 @@ module.exports = async function (deployer) {
     console.log(
         "Token Balance of crowdsale smart contract: " +
          await CSOVTokenInstance.balanceOf(crowdsale.address));
-    crowdsale.start(86400*3, 5000, web3.utils.toWei('0.001', 'ether'), web3.utils.toWei('2000000', 'ether'));
+    crowdsale.start(86400*3, 50000, web3.utils.toWei('0.001', 'ether'), web3.utils.toWei('2000000', 'ether'));
 }
 
 async function deployToken(deployer){
