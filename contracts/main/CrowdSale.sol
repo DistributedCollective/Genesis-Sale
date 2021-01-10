@@ -153,7 +153,7 @@ contract CrowdSale is Ownable {
     function assignTokens(address investor, uint amountWei) external onlyAdmin saleActive{
         //no partial investments for btc investors to keep our accounting simple
         uint maxPurchase = getMaxPurchase(investor);
-        require(maxPurchase.add(InvestorTotalDeposits[investor]) >= amountWei, "investor already has too many tokens");
+        require(maxPurchase >= amountWei.add(InvestorTotalDeposits[investor]), "investor already has too many tokens");
         uint numTokens = getTokenAmount(amountWei);
         require(numTokens < availableTokens, "amount needs to be smaller than the number of available tokens");
         _processPurchase(investor, amountWei, numTokens);
