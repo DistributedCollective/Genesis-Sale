@@ -116,11 +116,6 @@ contract CrowdSale is Ownable {
         require(msg.value >= minPurchase, "must send more then minPurchase");
         uint256 maxPurchase = getMaxPurchase(msg.sender); // The max purchase allowed based on NFT Holding
         require(maxPurchase > 0, "The User does NOT hold NFT");
-        uint256 localminPurchase = 0;
-        if(InvestorTotalDeposits[msg.sender] == 0) {
-            localminPurchase = maxPurchase.div(2);
-            require(msg.value >= localminPurchase,"User must send more than maxPurchase/2");
-        }
         uint256 depositAllowed =
             maxPurchase.sub(InvestorTotalDeposits[msg.sender]); // The max allowed deposit after sub of former deposits of the same investor
         maxPurchase = 0;
