@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.6.2;
 
-
 import "openzeppelin-solidity/contracts/access/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
@@ -13,9 +12,30 @@ import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 
 import "./CSOVToken.sol";
 
-
 contract CrowdSale is Ownable {
     using SafeMath for uint256;
+
+    address[] NFTAddresses;
+    mapping(address => uint256) public MaxDepositPerNFT;
+    mapping(address => uint256) public InvestorTotalDeposits; // the sum of all deposits per investor
+    address public token;
+    address payable public sovrynAddress;
+    uint256 public end;
+    // How many token units a buyer gets per wei
+    uint256 public rate;
+    // Amount of wei raised
+    uint256 public weiRaised;
+    uint256 public crowdSaleSupply;
+    uint256 public availableTokens;
+    uint256 public tokenTotalSupply;
+    uint256 public minPurchase;
+    //uint256 public maxPurchase;
+    bool public saleEnded;
+    bool public isStopSale;
+    bool public isAdminsSet;
+
+    /** the admin wallet is allowed to assign tokens to BTC investors*/
+    address payable public adminWallet;
 
     /**
      * Event for token purchase logging
@@ -30,57 +50,61 @@ contract CrowdSale is Ownable {
     );
     event Imburse(address payable indexed imbursePurchaser, uint256 amount);
     event CrowdSaleStarted(uint256 total, uint256 sale, uint256 minp);
-    address[] NFTAddresses;
-    mapping(address => uint256) MaxDepositPerNFT;
-    mapping(address => uint256) public InvestorTotalDeposits; // the sum of all deposits per investor
-    address public token;
-    address payable public sovrynAddress;
-    uint256 public end;
-    // How many token units a buyer gets per wei
-    uint256 public rate;
-    // Amount of wei raised
-    uint256 public weiRaised = 0;
-    uint256 public crowdSaleSupply;
-    uint256 public availableTokens;
-    uint256 public tokenTotalSupply;
-    uint256 public minPurchase;
-    bool public saleEnded;
-    uint256 public reimburseRBTC = 0;
-    bool public isStopSale = false;
 
     /**
      ** maxDepositList[] - array of maxDeposit of RBTC (in wei) per NFT. maxDepositList[i] > maxDepositList[i+1]
      ** NFTAddresses [] - array of NFT's deployed contracts addresses
      **/
     constructor(
-        address CSOVAddress,
+        address _CSOVAddress,
         address[] memory _NFTAddresses,
-        uint256[] memory maxDepositList,
-        address payable _sovrynAddress
+        uint256[] memory _maxDepositList,
+        address payable _sovrynAddress,
+        address payable _adminWalletAddress
     ) public payable {
+        token = _CSOVAddress;
         NFTAddresses = _NFTAddresses;
-        saleEnded = false;
-        token = CSOVAddress;
         sovrynAddress = _sovrynAddress;
+        adminWallet = _adminWalletAddress;
         tokenTotalSupply = CSOVToken(token).totalSupply();
+        saleEnded = false;
         for (uint256 i = 0; i < NFTAddresses.length; i++) {
-            MaxDepositPerNFT[NFTAddresses[i]] = maxDepositList[i];
+            MaxDepositPerNFT[NFTAddresses[i]] = _maxDepositList[i];
+            if (i < (NFTAddresses.length - 1)) {
+                require(
+                    _maxDepositList[i] > _maxDepositList[i + 1],
+                    "maxDepositList[] must be in order: maxDepositList[i] > maxDepositList[i+1]"
+                );
+            }
         }
     }
 
     /**
+     * setAdmins setAdmins on CSOVToken
+     * */
+    //function setAdmins() external onlyOwner {
+    //    CSOVToken tokenInstance = CSOVToken(token);
+    //    isAdminsSet = tokenInstance.setSaleAdmins(payable(address(this)), adminWallet);
+    // }
+
+    /**
      * @dev   Owner starts the crowdsale
-     * @param duration - Duration of the sale
+     * @param _duration - Duration of the sale
      * @param _rate - Number of token units a buyer gets per wei
      * @param _minPurchase - Minimum deposit required
      * @param _crowdSaleSupply - Max number of tokens for the sale
      */
     function start(
-        uint256 duration,
+        uint256 _duration,
         uint256 _rate,
         uint256 _minPurchase,
         uint256 _crowdSaleSupply
     ) external onlyOwner() saleNotActive() {
+        CSOVToken tokenInstance = CSOVToken(token);
+        require(
+            tokenInstance.isSaleAdminsUpdate() == true,
+            "setAdmins before start"
+        );
         crowdSaleSupply = _crowdSaleSupply;
         require(0 < _minPurchase, "_minPurchase should be > 0");
         require(
@@ -91,9 +115,9 @@ contract CrowdSale is Ownable {
             crowdSaleSupply <= tokenTotalSupply,
             "crowdSaleSupply should be <= totalSupply"
         );
-        require(duration > 0, "duration should be > 0");
+        require(_duration > 0, "_duration should be > 0");
         availableTokens = crowdSaleSupply;
-        end = duration.add(block.timestamp);
+        end = _duration.add(block.timestamp);
         rate = _rate;
         minPurchase = _minPurchase;
         emit CrowdSaleStarted(tokenTotalSupply, crowdSaleSupply, minPurchase);
@@ -101,62 +125,117 @@ contract CrowdSale is Ownable {
 
     /**
      * @dev   Deposit Funds and receive tokens
+     * @dev   This function first check the RBTC deposit requirements and then the token availablility
+     * @dev   Reimburse in 2 cases:
+     * @dev   A.Investor sends more than his maxPurchase amount
+     * @dev    (Can-not a must- happen to each investor only once)
+     * @dev   B.Not enough available coins left for the sale
+     * @dev    (Can happen only once during the sale, since sale will be closed once availbleTokens == 0)
      */
     function buy() external payable saleActive() {
-        require(msg.value >= minPurchase, "must send more then minPurchase");
-        uint256 maxPurchase = getMaxPurchase(msg.sender); // The max purchase allowed based on NFT Holding
+        // Check Deposit RBTC deposit for requirements ==> depositAllowed
+        require(
+            msg.value >= minPurchase,
+            "must send more then global minPurchase"
+        );
+
+        // maxPurchase is the max purchase allowed based on NFT Holding
+        uint256 maxPurchase = getMaxPurchase(msg.sender);
         require(maxPurchase > 0, "The User does NOT hold NFT");
-        uint256 localminPurchase = 0;
-        if(InvestorTotalDeposits[msg.sender] == 0) {
-            localminPurchase = maxPurchase.div(2);
-            require(msg.value >= localminPurchase,"User must send more than maxPurchase/2");
-        }
+
+        // depositAllowed is the allowed deposit after sub of former deposits by the same investor
         uint256 depositAllowed =
-            maxPurchase.sub(InvestorTotalDeposits[msg.sender]); // The max allowed deposit after sub of former deposits of the same investor
+            maxPurchase.sub(InvestorTotalDeposits[msg.sender]);
         maxPurchase = 0;
-        require(depositAllowed != 0, "Deposit is not allowed");
-        uint256 tokenQuantityAllowed = getTokenAmount(depositAllowed); // The max token allowed
+        require(
+            depositAllowed != 0,
+            "Investor deposits have reached maxPurchase amount"
+        );
+        // Check Token availability
+        // cannot sell more than availble tokens left for the sale
+        uint256 tokenQuantityAllowed = getTokenAmount(depositAllowed);
         if (tokenQuantityAllowed > availableTokens) {
-            tokenQuantityAllowed = availableTokens; //  cannot sell more than availble tokens of the sale
+            tokenQuantityAllowed = availableTokens;
         }
-        uint256 tokenQuantityRequest = getTokenAmount(msg.value); // The token amount the investor requests
+
+        // The token amount the investor wish to buy
+        uint256 tokenQuantityRequest = getTokenAmount(msg.value);
+
+        // ReimburseRBTC > 0 if tokenRequest > tokenAllowed
+        uint256 reimburseRBTC;
         if (tokenQuantityRequest > tokenQuantityAllowed) {
             reimburseRBTC = (tokenQuantityRequest.sub(tokenQuantityAllowed))
-                .div(rate); //ReimburseRBTC > 0 if tokenRequest> tokenAllowed
+                .div(rate);
             tokenQuantityRequest = tokenQuantityAllowed;
         }
-        availableTokens = availableTokens.sub(tokenQuantityRequest);
         uint256 RBTCDepositRequest = (msg.value).sub(reimburseRBTC);
+
+        // Update State variables
         InvestorTotalDeposits[msg.sender] = InvestorTotalDeposits[msg.sender]
             .add(RBTCDepositRequest);
         weiRaised = weiRaised.add(RBTCDepositRequest);
+        availableTokens = availableTokens.sub(tokenQuantityRequest);
+
+        // Send Tokens
         CSOVToken tokenInstance = CSOVToken(token);
-        tokenInstance.transfer(msg.sender, tokenQuantityRequest);
+        uint256 tokenToSend = tokenQuantityRequest;
+        tokenQuantityRequest = 0;
+        tokenInstance.transfer(msg.sender, tokenToSend);
         emit TokenPurchase(msg.sender, rate, RBTCDepositRequest);
+
+        // Refund RBTC
         if (reimburseRBTC > 0) {
-            msg.sender.transfer(reimburseRBTC);
-            emit Imburse(msg.sender, reimburseRBTC);
+            uint256 refundRBTC = reimburseRBTC;
+            reimburseRBTC = 0;
+            msg.sender.transfer(refundRBTC);
+            emit Imburse(msg.sender, refundRBTC);
         }
     }
 
     /**
-     * @dev   Add to whiteList and resolve max deposit of investor
-     * @param investor address
-     */
-    function getMaxPurchase(address payable investor)
+     * @notice assigns token to a BTC investor
+     * @dev only callable by the admin
+     * @param _investor the address of the BTC _investor
+     * @param _amountBTC the amount of BTC transfered with 18 decimals
+     * */
+    function assignTokens(address _investor, uint256 _amountBTC)
+        external
+        onlyAdmin()
+        saleActive()
+    {
+        uint256 numTokens = getTokenAmount(_amountBTC);
+        //no partial investments for btc investors to keep our accounting simple
+        require(
+            numTokens <= availableTokens,
+            "amount needs to be smaller or equal to the number of available tokens"
+        );
+        availableTokens = availableTokens.sub(numTokens);
+        CSOVToken tokenInstance = CSOVToken(token);
+        tokenInstance.transfer(_investor, numTokens);
+    }
+
+    uint256 public NFTLength = NFTAddresses.length;
+
+    function help_func_nft_bal(address _NFT, address _user)
         public
         view
-        returns (uint256 maxpurchase)
+        returns (uint256)
     {
-        maxpurchase = 0;
-        for (uint256 i = 0; i < NFTAddresses.length; i = i.add(1)) {
-            if (IERC721(NFTAddresses[i]).balanceOf(investor) > 0) {
+        return (IERC721(_NFT).balanceOf(_user));
+    }
+
+    /**
+     * @dev   Add to whiteList and resolve max deposit of _investor
+     * @param _investor address
+     */
+    function getMaxPurchase(address _investor) public view returns (uint256) {
+        uint256 maxpurchase = 0;
+        for (uint256 i = 0; i < NFTAddresses.length; i++) {
+            if (IERC721(NFTAddresses[i]).balanceOf(_investor) > 0) {
                 maxpurchase = MaxDepositPerNFT[NFTAddresses[i]];
                 break;
             }
         }
-        //require moved to buy function, to expose getMaxPurchase to public FE.
-        //require(maxpurchase > 0, "The User does NOT hold NFT");
         return (maxpurchase);
     }
 
@@ -172,10 +251,10 @@ contract CrowdSale is Ownable {
         return _weiAmount.mul(rate);
     }
 
-    function saleClosure(bool isSaleEnded) external onlyOwner() saleDone() {
+    function saleClosure(bool _isSaleEnded) external onlyOwner() saleDone() {
         CSOVToken tokenInstance = CSOVToken(token);
-        tokenInstance.saleClosure(isSaleEnded);
-        saleEnded = true;
+        tokenInstance.saleClosure(_isSaleEnded);
+        saleEnded = _isSaleEnded;
     }
 
     /**
@@ -194,22 +273,32 @@ contract CrowdSale is Ownable {
      *
      */
     function withdrawFunds() external onlyOwner() saleDone() {
-          sovrynAddress.transfer(address(this).balance);
-          // sovrynAddress.transfer(weiRaised);}
+        sovrynAddress.transfer(address(this).balance);
+        // sovrynAddress.transfer(weiRaised);}
     }
 
-    function balanceOf(address owner) external view returns (uint256) {
+    function balanceOf(address _owner) external view returns (uint256) {
         CSOVToken tokenInstance = CSOVToken(token);
-        return tokenInstance.balanceOf(owner);
+        return tokenInstance.balanceOf(_owner);
     }
 
-    function stopSell(bool _isStopSale) external onlyOwner() {
+    function stopSale(bool _isStopSale) external onlyOwner() {
         isStopSale = _isStopSale;
     }
-    
+
+    function renounceOwnership() public override onlyOwner() {
+        require(1 == 0, "Disable function");
+    }
+
+    modifier onlyAdmin() {
+        require(msg.sender == adminWallet, "unauthorized");
+        _;
+    }
+
     modifier saleActive() {
         require(
-            !isStopSale && (end > 0 && block.timestamp < end && availableTokens > 0),
+            !isStopSale &&
+                (end > 0 && block.timestamp < end && availableTokens > 0),
             "Sale must be active"
         );
         _;
@@ -222,7 +311,8 @@ contract CrowdSale is Ownable {
 
     modifier saleDone() {
         require(
-            isStopSale || (end > 0 && (block.timestamp >= end || availableTokens == 0)),
+            isStopSale ||
+                (end > 0 && (block.timestamp >= end || availableTokens == 0)),
             "Sale has NOT ended"
         );
         _;

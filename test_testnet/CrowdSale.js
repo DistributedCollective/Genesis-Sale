@@ -2,8 +2,8 @@
 //const NFTMockSetup = artifacts.require("NFTMockSetup");
 const CSOVToken = artifacts.require("CSOVToken");
 const CrowdSale = artifacts.require("CrowdSale");
-let tokenAddr = "0xEBF51cd66e1d91Eec9cb38d5964E724B95DFbC1c";
-let crowdsaleAddr = "0x42dC0747727C5c1b248121e87E10Ea164a5e5c36";
+let tokenAddr = "0x71987d48a5577fB11E222d3DC421E04Ed54DeB9B";
+let crowdsaleAddr = "0x355089c48692C27dC6fE94afd75cBa2a3cAD1176";
 let token;
 let crowd;
 let rate;
@@ -47,8 +47,7 @@ it('should setup var', async () => {
   bal = await token.balanceOf(account5);
   console.log("bal of owner read from CSOVToken (account5) is : " + bal);
   let bal1 = await crowd.balanceOf(account5);
-  console.log("bal of owner read from crowdsale (account5) is : " + bal1);
-  
+  console.log("bal of owner read from crowdsale (account5) is : " + bal1); 
 });
 /*
 it('should fail - Ownable: caller is not the owner', async () => {
@@ -69,7 +68,7 @@ it('should start the CrowdSale', async () => {
   token = await CSOVToken.at(tokenAddr);
   crowd = await CrowdSale.at(crowdsaleAddr);
   //7.5 hours, till 10AM
-  const duration = 27000;
+ /* const duration = 604800;
   rate = 50000;
   const minpurchase = web3.utils.toWei('0.0002'); 
   const crowdsalesupply = web3.utils.toWei('250');
@@ -82,15 +81,10 @@ it('should start the CrowdSale', async () => {
   console.log(" crowd supply is: " + crowdsalesupply);
   console.log(" available supply is: " + actualAvailableTokens);
   console.log(" rate is: " + actualRate);
-  console.log(" minpurchase is: " + actualMinPurchase);
-  //assert(totalsupplyi.eq(web3.utils.toBN(crowdsalesupply)));
-  //assert(end.eq(web3.utils.toBN(expectedEnd)));
-  //assert(actualAvailableTokens.eq(web3.utils.toBN(crowdsalesupply)));
-  //assert(actualMinPurchase.eq(web3.utils.toBN(minpurchase)));
-  //assert(actualRate.eq(web3.utils.toBN(rate)));
-  //assert(actualMaxPurchase.eq(web3.utils.toBN(maxPurchase)));               
+  console.log(" minpurchase is: " + actualMinPurchase);            
+*/
 });
-
+/*
 it('should buy and receive tokens', async () => {
   const amount1 = web3.utils.toBN(web3.utils.toWei('0.001'));
   const amount2 = web3.utils.toBN(web3.utils.toWei('0.0015'));
@@ -104,9 +98,6 @@ it('should buy and receive tokens', async () => {
   console.log("account2 balance is: " + balance2);
   const totalwei = await crowd.weiRaised();
   console.log("total wei deposit is 0.001+0.0015 = 0.0025 = " + totalwei);
-  //assert(balance1.eq(amount1.mul(web3.utils.toBN(rate))));
-  //assert(balance2.eq(amount2.mul(web3.utils.toBN(rate))));    
-  //assert((amount1+amount2).eq(totalwei));
 });
 
 it('should buy and imburse: Investor deposit more then maxPurchase', async () => {
@@ -125,48 +116,75 @@ it('should buy and imburse: Investor deposit more then maxPurchase', async () =>
   console.log("total wei deposit is 0.001+0.0015 +0.0005 = 0.003 = " + totalwei);    
       //assert(balance2.eq(amountAllowed.mul(web3.utils.toBN(rate))));      
 });
+*/
+/*
+it('should fail to buy for account0: amount0 < maxPurchase/2 0.00074 < 0.00075', async () => {
+  const amount0 = web3.utils.toBN(web3.utils.toWei('0.00074'));
+  //const amount0 = await crowd.getMaxPurchase(account0).sub(web3.utils.toBN(1));
+  console.log("should be 0.0015 " + await crowd.getMaxPurchase(account0));
+  console.log( "should be < 0.00075  wei " + amount0);
+  await crowd.buy({from: account0, value: amount0});
+});
+*/
+it('getmaxpurchase', async () =>{
+  console.log("maxpurchase should be 0.001 " + await crowd.getMaxPurchase(account3));
+  console.log("account3 deposit done = " + await crowd.InvestorTotalDeposits(account3));
+});
 
-/*it('should buy and imburse: Investor deposit more then maxPurchase', async () => {
-  const amount4 = web3.utils.toBN(web3.utils.toWei('0.001'));
-  const amountAllowed = web3.utils.toBN(web3.utils.toWei('0.0005'));
-  const RBTCbalance4Before = await web3.eth.getBalance(account4);
-  const Tokenbalance4Before = await token.balanceOf(account4);
-  await crowd.buy({from: account4, value: amount4});
-  const RBTCbalance4After = await web3.eth.getBalance(account4);
-  const Tokenbalance4After = await token.balanceOf(account4);
-  console.log("account4 RBTC balance before: " + RBTCbalance4Before);
-  console.log("account4 RBTC balance after, should be 0.0005 less: " + RBTCbalance4After);
-  console.log("account4 Token balance before: " + Tokenbalance4Before);
-  console.log("account4 Token balance after, should be 25 more: " + Tokenbalance4After);
-  const totalwei = await crowd.weiRaised();
-  console.log("total wei deposit is 0.001+0.0015 +0.0005 + 0.0005 = 0.0035 = " + totalwei);    
-      //assert(balance2.eq(amountAllowed.mul(web3.utils.toBN(rate))));      
-});
-*/
-/*it('should buy and imburse: Investor deposit more then maxPurchase', async () => {
-  const amount3 = web3.utils.toBN(web3.utils.toWei('0.0015'));
-  const amountAllowed = web3.utils.toBN(web3.utils.toWei('0.001'));
+it('should buy and receive tokens account3 amount3 > maxPurchase/2 0.0007 > 0.0005 ', async () => {
+  /*let amount3 = web3.utils.toBN(web3.utils.toWei('0.0007'));
+  let balance3 = await token.balanceOf(account3);
+  console.log( "balance tokens before" + balance3);
+  await crowd.buy({from: account3, value: amount3});
+  balance3 = await token.balanceOf(account3);
+  console.log( "balance tokens should be + 35" + balance3);
+  console.log("account3 deposit done = " + await crowd.InvestorTotalDeposits(account3));
+  amount3 = web3.utils.toBN(web3.utils.toWei('0.00021'));
+  await crowd.buy({from: account3, value: amount3});
+  balance3 = await token.balanceOf(account3);
+  console.log( "balance tokens should be + 35 + 10.5 " + balance3);
+  */
   const RBTCbalance3Before = await web3.eth.getBalance(account3);
-  const Tokenbalance3Before = await token.balanceOf(account3);
-  await crowd.buy({from: account4, value: amount3});
+  amount3 = web3.utils.toBN(web3.utils.toWei('0.0021'));
+  await crowd.buy({from: account3, value: amount3});
   const RBTCbalance3After = await web3.eth.getBalance(account3);
-  const Tokenbalance3After = await token.balanceOf(account3);
+  balance3 = await token.balanceOf(account3);
+  console.log( "balance tokens should be + 35 + 10.5 + 4.5" + balance3);
   console.log("account3 RBTC balance before: " + RBTCbalance3Before);
-  console.log("account3 RBTC balance after, should be 0.0005 less: " + RBTCbalance3After);
-  console.log("account3 Token balance before: " + Tokenbalance3Before);
-  console.log("account3 Token balance after, should be 25 more: " + Tokenbalance3After);
-  const totalwei = await crowd.weiRaised();
-  console.log("total wei deposit is 0.001+0.0015 +0.0005 + 0.0005 +0.001= 0.0045 = " + totalwei);    
+  console.log("account3 RBTC balance after, should be 0.0001 less: " + RBTCbalance3After);
 });
-*/
-/*it('Should Withdraw Funds', async () => {
+
+/*
+it('Should stop Sale', async () => {
+  //let saleStop = await crowd.isStopSale();
+  console.log("isStopSale before stop = "+ await crowd.isStopSale());
+  await crowd.stopSale(true, { from: account5 });
+  //saleStop = await crowd.isStopSale();
+  console.log("isStopSale after stop = "+ await crowd.isStopSale());
+});
+
+it('Should Withdraw Funds', async () => {
   const totalwei = await crowd.weiRaised();
   console.log( "totalwei raised: "  + totalwei);
-  const balanceweiOutBefore = await web3.eth.getBalance(account5);
+  const balanceweiOutBefore = await web3.eth.getBalance(account6);
   await crowd.withdrawFunds({ from: account5 });
-  const balanceweiOutAfter = await web3.eth.getBalance(account5);
-  console.log(" balanceweiOutBefore sovrynaddress: " + balanceweiOutBefore);
-  console.log(" balanceweiOutAfter sovrynaddress: " + balanceweiOutAfter);
+  const balanceweiOutAfter = await web3.eth.getBalance(account6);
+  const weiRaised = await crowd.weiRaised();
+  console.log(" balanceweiOutBefore account6: " + balanceweiOutBefore);
+  console.log(" balanceweiOutAfter account6: " + balanceweiOutAfter);
+  console.log(" weiRaised: " + weiRaised);
+});
+
+it('Should Withdraw Tokens', async () => {
+  const tokenSc = await token.balanceOf(crowdsaleAddr);
+  const balanceOut = await token.balanceOf(account6);
+  console.log("balance token before sc: "+ tokenSc);
+  console.log("balance token before sovryn: "+ balanceOut);
+  await crowd.withdrawTokens({ from: account5 });
+  tokenSc = await token.balanceOf(crowdsaleAddr);
+  balanceOut = await token.balanceOf(account6);
+  console.log("balance token after sc: "+ tokenSc);
+  console.log("balance token after sovryn: "+ balanceOut);
 });
 */
 /*

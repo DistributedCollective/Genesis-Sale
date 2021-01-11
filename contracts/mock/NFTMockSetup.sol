@@ -4,41 +4,20 @@ pragma solidity ^0.6.2;
 import "./SovrynNft.sol";
 import "openzeppelin-solidity/contracts/access/Ownable.sol";
 
-contract NFTMockSetup is Ownable{
-    string[3] name = ["NFT0", "NFT1", "NFT2"];
-    string[3] symbol = ["N0", "N1", "N2"];
+contract NFTMockSetup is Ownable {
+    string[3] name = ["SovrynNFT0", "SovrynNFT1", "SovrynNFT2"];
+    string[3] symbol = ["NF0", "NF1", "NF2"];
     address[3] public NFAdress;
-    address[5] public holders;
+    address[3] public holders;
     address admin;
 
-    constructor(address[5] memory _holders) public {
-        holders = _holders;
+    constructor(address[3] memory _holders) public {
+        holders[0] = _holders[0];
+        holders[1] = _holders[1];
+        holders[2] = _holders[2];
         admin = msg.sender;
     }
 
-   /* This Function is costly during deployment
-    function buildMockAndMint() public {
-        require(msg.sender == admin, "Only Admin can build NFT");
-        for (uint256 i = 0; i < 5; i++) {
-            NFAdress[i] = address(new SovrynNft(name[i], symbol[i]));
-        }
-        SovrynNft(NFAdress[0]).mint(holders[0]);
-        SovrynNft(NFAdress[0]).mint(holders[1]);
-        SovrynNft(NFAdress[0]).mint(holders[2]);
-
-        SovrynNft(NFAdress[1]).mint(holders[2]);
-        SovrynNft(NFAdress[1]).mint(holders[3]);
-
-        SovrynNft(NFAdress[2]).mint(holders[0]);
-
-        SovrynNft(NFAdress[3]).mint(holders[2]);
-        SovrynNft(NFAdress[3]).mint(holders[3]);
-        SovrynNft(NFAdress[3]).mint(holders[1]);
-
-        SovrynNft(NFAdress[4]).mint(holders[2]);
-        SovrynNft(NFAdress[4]).mint(holders[4]);
-    }*/
-    
     function buildNFT(uint256 i) public {
         require(msg.sender == admin, "Only Admin can build NFT");
         NFAdress[i] = address(new SovrynNft(name[i], symbol[i]));
@@ -47,13 +26,9 @@ contract NFTMockSetup is Ownable{
     function mintMockNFT() public {
         require(msg.sender == admin, "Only Admin can build NFT");
         SovrynNft(NFAdress[0]).mint(holders[0]);
-        SovrynNft(NFAdress[0]).mint(holders[1]);
-        SovrynNft(NFAdress[0]).mint(holders[2]);
-
-        SovrynNft(NFAdress[1]).mint(holders[2]);
-        SovrynNft(NFAdress[1]).mint(holders[3]);
-
-        SovrynNft(NFAdress[2]).mint(holders[4]);
+        SovrynNft(NFAdress[1]).mint(holders[0]);
+        SovrynNft(NFAdress[1]).mint(holders[1]);
+        SovrynNft(NFAdress[2]).mint(holders[2]);
     }
 
     function mintNFTHolder(address holder, uint256 rank) public {
@@ -86,10 +61,6 @@ contract NFTMockSetup is Ownable{
             address
         )
     {
-        return (
-            NFAdress[0],
-            NFAdress[1],
-            NFAdress[2]
-        );
+        return (NFAdress[0], NFAdress[1], NFAdress[2]);
     }
 }

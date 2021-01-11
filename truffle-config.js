@@ -42,7 +42,7 @@ module.exports = {
           //provider: () => new HDWalletProvider(secrets.seed, "https://testnet.sovryn.app/rpc"),
           provider: () => new HDWalletProvider(secrets.seed, "wss://testnet.sovryn.app/ws"),
           network_id: 31,
-            gasPrice: 60000000,
+            gasPrice: 70000000,
             gas: 5900000,
             networkCheckTimeout: 1e9,
             timeoutBlocks: 500000
