@@ -24,7 +24,7 @@ contract CrowdSale is Ownable {
      * @param amount amount of tokens purchased
      */
     event TokenPurchase(
-        address payable indexed purchaser,
+        address indexed purchaser,
         uint256 value,
         uint256 amount
     );
@@ -47,6 +47,14 @@ contract CrowdSale is Ownable {
     bool public saleEnded;
     uint256 public reimburseRBTC = 0;
     bool public isStopSale = false;
+    
+    /** the admin wallet is allowed to assign tokens to BTC investors*/
+    address public admin;
+    
+    modifier onlyAdmin(){
+        require(msg.sender == admin, "unauthorized");
+        _;
+    }
 
     /**
      ** maxDepositList[] - array of maxDeposit of RBTC (in wei) per NFT. maxDepositList[i] > maxDepositList[i+1]
@@ -56,7 +64,8 @@ contract CrowdSale is Ownable {
         address CSOVAddress,
         address[] memory _NFTAddresses,
         uint256[] memory maxDepositList,
-        address payable _sovrynAddress
+        address payable _sovrynAddress,
+        address payable adminAddress
     ) public payable {
         NFTAddresses = _NFTAddresses;
         saleEnded = false;
@@ -66,6 +75,7 @@ contract CrowdSale is Ownable {
         for (uint256 i = 0; i < NFTAddresses.length; i++) {
             MaxDepositPerNFT[NFTAddresses[i]] = maxDepositList[i];
         }
+        admin = adminAddress;
     }
 
     /**
@@ -106,11 +116,6 @@ contract CrowdSale is Ownable {
         require(msg.value >= minPurchase, "must send more then minPurchase");
         uint256 maxPurchase = getMaxPurchase(msg.sender); // The max purchase allowed based on NFT Holding
         require(maxPurchase > 0, "The User does NOT hold NFT");
-        uint256 localminPurchase = 0;
-        if(InvestorTotalDeposits[msg.sender] == 0) {
-            localminPurchase = maxPurchase.div(2);
-            require(msg.value >= localminPurchase,"User must send more than maxPurchase/2");
-        }
         uint256 depositAllowed =
             maxPurchase.sub(InvestorTotalDeposits[msg.sender]); // The max allowed deposit after sub of former deposits of the same investor
         maxPurchase = 0;
@@ -125,25 +130,51 @@ contract CrowdSale is Ownable {
                 .div(rate); //ReimburseRBTC > 0 if tokenRequest> tokenAllowed
             tokenQuantityRequest = tokenQuantityAllowed;
         }
-        availableTokens = availableTokens.sub(tokenQuantityRequest);
+
         uint256 RBTCDepositRequest = (msg.value).sub(reimburseRBTC);
-        InvestorTotalDeposits[msg.sender] = InvestorTotalDeposits[msg.sender]
-            .add(RBTCDepositRequest);
-        weiRaised = weiRaised.add(RBTCDepositRequest);
-        CSOVToken tokenInstance = CSOVToken(token);
-        tokenInstance.transfer(msg.sender, tokenQuantityRequest);
-        emit TokenPurchase(msg.sender, rate, RBTCDepositRequest);
+        _processPurchase(msg.sender, RBTCDepositRequest, tokenQuantityRequest);
         if (reimburseRBTC > 0) {
             msg.sender.transfer(reimburseRBTC);
             emit Imburse(msg.sender, reimburseRBTC);
         }
+    }
+    
+    /**
+     * @notice assigns token to a BTC investor
+     * @dev only callable by the admin
+     * @param investor the address of the BTC investor
+     * @param amountWei the amount of BTC transfered with 18 decimals
+     * */
+    function assignTokens(address investor, uint amountWei) external onlyAdmin saleActive{
+        //no partial investments for btc investors to keep our accounting simple
+        uint maxPurchase = getMaxPurchase(investor);
+        require(maxPurchase >= amountWei.add(InvestorTotalDeposits[investor]), "investor already has too many tokens");
+        uint numTokens = getTokenAmount(amountWei);
+        require(numTokens < availableTokens, "amount needs to be smaller than the number of available tokens");
+        _processPurchase(investor, amountWei, numTokens);
+    }
+    
+    /**
+     * @dev updates the state and transfers the tokens
+     * @param investor the address of the investor
+     * @param amountWei the investment amount in wei
+     * @param numTokens the number of tokens
+     * */
+    function _processPurchase(address investor, uint amountWei, uint numTokens) internal{
+        availableTokens = availableTokens.sub(numTokens);
+        weiRaised = weiRaised.add(amountWei);
+        InvestorTotalDeposits[investor] = InvestorTotalDeposits[investor]
+            .add(amountWei);
+        CSOVToken tokenInstance = CSOVToken(token);
+        tokenInstance.transfer(investor, numTokens);
+        emit TokenPurchase(investor, rate, amountWei);
     }
 
     /**
      * @dev   Add to whiteList and resolve max deposit of investor
      * @param investor address
      */
-    function getMaxPurchase(address payable investor)
+    function getMaxPurchase(address investor)
         public
         view
         returns (uint256 maxpurchase)
