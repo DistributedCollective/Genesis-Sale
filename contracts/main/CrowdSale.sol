@@ -67,7 +67,7 @@ contract CrowdSale is Ownable {
         sovrynAddress = _sovrynAddress;
         admin = _adminAddress;
         tokenTotalSupply = CSOVToken(token).totalSupply();
-        saleEnded = false;
+
         for (uint256 i = 0; i < NFTAddresses.length; i++) {
             MaxDepositPerNFT[NFTAddresses[i]] = _maxDepositList[i];
             if (i < (NFTAddresses.length - 1)) {
@@ -93,10 +93,7 @@ contract CrowdSale is Ownable {
         uint256 _crowdSaleSupply
     ) external onlyOwner saleNotActive {
         CSOVToken tokenInstance = CSOVToken(token);
-        require(
-            tokenInstance.isSaleAdminsUpdate() == true,
-            "setAdmins before start"
-        );
+        require(tokenInstance.isSaleAdminsUpdate(), "setAdmins before start");
         crowdSaleSupply = _crowdSaleSupply;
         require(0 < _minPurchase, "_minPurchase should be > 0");
         require(
@@ -190,7 +187,7 @@ contract CrowdSale is Ownable {
         );
         uint256 numTokens = getTokenAmount(_amountWei);
         require(
-            numTokens < availableTokens,
+            numTokens <= availableTokens,
             "amount needs to be smaller than the number of available tokens"
         );
         _processPurchase(_investor, _amountWei, numTokens);
@@ -258,7 +255,11 @@ contract CrowdSale is Ownable {
         uint256 tokensSovryn =
             tokenTotalSupply.sub(crowdSaleSupply).add(availableTokens);
         CSOVToken tokenInstance = CSOVToken(token);
-        tokenInstance.transfer(sovrynAddress, tokensSovryn);
+        //tokenInstance.transfer(sovrynAddress, tokensSovryn);
+        require(
+            tokenInstance.transfer(sovrynAddress, tokensSovryn),
+            "transfer failed"
+        );
     }
 
     /**
@@ -280,7 +281,7 @@ contract CrowdSale is Ownable {
     }
 
     function renounceOwnership() public override onlyOwner {
-        require(1 == 0, "Disable function");
+        revert("Disable function");
     }
 
     function replaceAdmin(address payable newAdmin) external onlyOwner {

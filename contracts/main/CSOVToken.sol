@@ -65,11 +65,10 @@ contract CSOVToken is ERC20, Ownable {
         override
         returns (bool)
     {
-        require(
-            isSaleEnded || msg.sender == owner() || msg.sender == saleAdmin,
-            "Token Transfer is not allowed during the sale"
-        );
-        return super.transfer(to, value);
+        if(onlyAllowed(msg.sender)){
+            return super.transfer(to, value);
+        }
+        return false;
     }
 
     function transferFrom(
@@ -77,10 +76,17 @@ contract CSOVToken is ERC20, Ownable {
         address recipient,
         uint256 amount
     ) public override returns (bool) {
+        if(onlyAllowed(sender)){
+            return super.transferFrom(sender, recipient, amount);
+        }
+        return false;
+    }
+
+    function onlyAllowed(address adminAllowed) internal returns (bool)  {
         require(
-            isSaleEnded || sender == owner() || sender == saleAdmin,
+            isSaleEnded || adminAllowed == owner() || adminAllowed == saleAdmin,
             "Token Transfer is not allowed during the sale"
         );
-        return super.transferFrom(sender, recipient, amount);
+        return true;
     }
 }

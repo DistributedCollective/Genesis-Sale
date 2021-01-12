@@ -229,6 +229,10 @@ contract('CrowdSale', (accounts) => {
         const balance0 = token0balanceAfter.sub(token0balanceBefore);
         const delta = balance0Before - balance0After ;
 
+        console.log("delta: " + delta);
+        console.log("amount0WithGas: " + amount0WithGas);
+        console.log("delta: " + delta);
+
         // Add small margin for mismatch in calculation
         assert((delta - amount0WithGas < 5000000) &&  (delta - amount0WithGas > (-5000000) ));
         assert(balance0.eq(amount0.mul(web3.utils.toBN(rate))));    
