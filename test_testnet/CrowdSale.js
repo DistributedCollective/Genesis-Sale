@@ -84,7 +84,7 @@ it('should start the CrowdSale', async () => {
   console.log(" minpurchase is: " + actualMinPurchase);            
 */
 });
-/*
+
 it('should buy and receive tokens', async () => {
   const amount1 = web3.utils.toBN(web3.utils.toWei('0.001'));
   const amount2 = web3.utils.toBN(web3.utils.toWei('0.0015'));
@@ -116,7 +116,7 @@ it('should buy and imburse: Investor deposit more then maxPurchase', async () =>
   console.log("total wei deposit is 0.001+0.0015 +0.0005 = 0.003 = " + totalwei);    
       //assert(balance2.eq(amountAllowed.mul(web3.utils.toBN(rate))));      
 });
-*/
+
 /*
 it('should fail to buy for account0: amount0 < maxPurchase/2 0.00074 < 0.00075', async () => {
   const amount0 = web3.utils.toBN(web3.utils.toWei('0.00074'));

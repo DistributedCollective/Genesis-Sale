@@ -20,9 +20,7 @@ contract CSOVToken is ERC20, Ownable {
     string private constant SYMBOL = "CSOV"; // Token Symbol
 
     bool public isSaleEnded;
-    address payable saleWalletAdmin;
     address payable saleAdmin;
-    address payable csovAdmin;
     bool public isSaleAdminsUpdate;
 
     /**
@@ -34,8 +32,6 @@ contract CSOVToken is ERC20, Ownable {
         public
         ERC20(NAME, SYMBOL)
     {
-        csovAdmin = _csovAdmin;
-        isSaleEnded = false;
         transferOwnership(_csovAdmin);
         _mint(_csovAdmin, totalSupply_);
     }
@@ -47,15 +43,11 @@ contract CSOVToken is ERC20, Ownable {
         }
     }
 
-    function setSaleAdmins(
-        address payable _saleAdmin,
-        address payable _saleWalletAdmin
-    ) external onlyOwner {
+    function setSaleAdmin(address payable _saleAdmin) external onlyOwner {
         saleAdmin = _saleAdmin;
-        saleWalletAdmin = _saleWalletAdmin;
         isSaleAdminsUpdate = true;
         require(
-            transfer(saleAdmin, balanceOf(csovAdmin)),
+            transfer(saleAdmin, balanceOf(owner())),
             "saleAdmin token transer failed"
         );
     }
@@ -74,10 +66,7 @@ contract CSOVToken is ERC20, Ownable {
         returns (bool)
     {
         require(
-            isSaleEnded ||
-                (msg.sender == owner()) ||
-                msg.sender == saleAdmin ||
-                msg.sender == saleWalletAdmin,
+            isSaleEnded || msg.sender == owner() || msg.sender == saleAdmin,
             "Token Transfer is not allowed during the sale"
         );
         return super.transfer(to, value);
@@ -89,10 +78,7 @@ contract CSOVToken is ERC20, Ownable {
         uint256 amount
     ) public override returns (bool) {
         require(
-            isSaleEnded ||
-                sender == owner() ||
-                sender == saleAdmin ||
-                sender == saleWalletAdmin,
+            isSaleEnded || sender == owner() || sender == saleAdmin,
             "Token Transfer is not allowed during the sale"
         );
         return super.transferFrom(sender, recipient, amount);

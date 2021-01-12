@@ -32,7 +32,6 @@ contract CrowdSale is Ownable {
     //uint256 public maxPurchase;
     bool public saleEnded;
     bool public isStopSale;
-    bool public isAdminsSet;
 
     /** the admin wallet is allowed to assign tokens to BTC investors*/
     address payable public admin;
@@ -50,6 +49,7 @@ contract CrowdSale is Ownable {
     );
     event Imburse(address payable indexed imbursePurchaser, uint256 amount);
     event CrowdSaleStarted(uint256 total, uint256 sale, uint256 minp);
+    event NewAdminSet(address payable admin, address payable newAdmin);
 
     /**
      ** maxDepositList[] - array of maxDeposit of RBTC (in wei) per NFT. maxDepositList[i] > maxDepositList[i+1]
@@ -163,22 +163,7 @@ contract CrowdSale is Ownable {
 
         uint256 RBTCDepositRequest = (msg.value).sub(reimburseRBTC);
         _processPurchase(msg.sender, RBTCDepositRequest, tokenQuantityRequest);
-        /*  git merge removed
-        uint256 RBTCDepositRequest = (msg.value).sub(reimburseRBTC);
 
-        // Update State variables
-        InvestorTotalDeposits[msg.sender] = InvestorTotalDeposits[msg.sender]
-            .add(RBTCDepositRequest);
-        weiRaised = weiRaised.add(RBTCDepositRequest);
-        availableTokens = availableTokens.sub(tokenQuantityRequest);
-
-        // Send Tokens
-        CSOVToken tokenInstance = CSOVToken(token);
-        uint256 tokenToSend = tokenQuantityRequest;
-        tokenQuantityRequest = 0;
-        tokenInstance.transfer(msg.sender, tokenToSend);
-        emit TokenPurchase(msg.sender, rate, RBTCDepositRequest);
-*/
         // Refund RBTC
         if (reimburseRBTC > 0) {
             msg.sender.transfer(reimburseRBTC);
@@ -232,29 +217,6 @@ contract CrowdSale is Ownable {
         emit TokenPurchase(_investor, rate, _amountWei);
     }
 
-    //// Removed after git merge
-    /**
-     * notice assigns token to a BTC investor
-     * dev only callable by the admin
-     * param _investor the address of the BTC _investor
-     * param _amountBTC the amount of BTC transfered with 18 decimals
-     * */
-    /*   function assignTokens(address _investor, uint256 _amountBTC)
-        external
-        onlyAdmin()
-        saleActive()
-    {
-        uint256 numTokens = getTokenAmount(_amountBTC);
-        //no partial investments for btc investors to keep our accounting simple
-        require(
-            numTokens <= availableTokens,
-            "amount needs to be smaller or equal to the number of available tokens"
-        );
-        availableTokens = availableTokens.sub(numTokens);
-        CSOVToken tokenInstance = CSOVToken(token);
-        tokenInstance.transfer(_investor, numTokens);
-    }
-*/
     /**
      * @dev   Add to whiteList and resolve max deposit of _investor
      * @param _investor address
@@ -319,6 +281,12 @@ contract CrowdSale is Ownable {
 
     function renounceOwnership() public override onlyOwner {
         require(1 == 0, "Disable function");
+    }
+
+    function replaceAdmin(address payable newAdmin) external onlyOwner {
+        require(newAdmin != address(0), "New Admin cannot be the zero address");
+        emit NewAdminSet(admin, newAdmin);
+        admin = newAdmin;
     }
 
     modifier onlyAdmin() {
