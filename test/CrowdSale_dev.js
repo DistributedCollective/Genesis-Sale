@@ -1,5 +1,5 @@
 //const { expectRevert, increaseTime } = require('@openzeppelin/test-helpers');
-const { expect, expectRevert, time } = require('@openzeppelin/test-helpers');
+const { expectEvent, expectRevert, time } = require('@openzeppelin/test-helpers');
 const CrowdSale = artifacts.require('main/CrowdSale.sol');
 const CSOVToken = artifacts.require('main/CSOVToken.sol');
 const NFTMockSetup = artifacts.require('mock/NFTMockSetup.sol');
@@ -17,7 +17,7 @@ contract('CrowdSale', (accounts) => {
   const totalSupply = web3.utils.toWei('300');
   const minpurchase = web3.utils.toWei('0.1');
   
-  const duration = 10;
+  const duration = 20;
   const rate = 2; 
   
   const holder0 = accounts[0];
@@ -218,6 +218,13 @@ contract('CrowdSale', (accounts) => {
         const token0balanceBefore = await token.balanceOf(holder0);
 
         let tx = await crowdsale.buy({ from: holder0, value: amount0 });
+        const amount = '1000000000000000000';
+        const tokenAmount = '2000000000000000000';
+        expectEvent(tx, 'TokenPurchase', {
+          purchaser: holder0,
+          value: amount,
+          amount: tokenAmount
+        });
 
         const balance0After = await web3.eth.getBalance(holder0);
         const token0balanceAfter = await token.balanceOf(holder0);
@@ -228,10 +235,6 @@ contract('CrowdSale', (accounts) => {
         const amount0WithGas = amount0.add(gasSpent);
         const balance0 = token0balanceAfter.sub(token0balanceBefore);
         const delta = balance0Before - balance0After ;
-
-        console.log("delta: " + delta);
-        console.log("amount0WithGas: " + amount0WithGas);
-        console.log("delta: " + delta);
 
         // Add small margin for mismatch in calculation
         assert((delta - amount0WithGas < 5000000) &&  (delta - amount0WithGas > (-5000000) ));
@@ -245,6 +248,13 @@ contract('CrowdSale', (accounts) => {
         const token1balanceBefore = await token.balanceOf(holder1);
         
         let tx = await crowdsale.buy({from: holder1, value: amount1});
+        const amount = '500000000000000000';
+        const tokenAmount = '1000000000000000000';
+        expectEvent(tx, 'TokenPurchase', {
+          purchaser: holder1,
+          value: amount,
+          amount: tokenAmount
+        });
         
         const balance1After = await web3.eth.getBalance(holder1);
         const token1balanceAfter = await token.balanceOf(holder1);
@@ -271,7 +281,21 @@ contract('CrowdSale', (accounts) => {
         const token1balanceBefore = await token.balanceOf(holder1);
         
         let tx = await crowdsale.buy({from: holder1, value: amount1});
+        const amount = '1000000000000000000';
+        const tokenAmount = '2000000000000000000';
         
+        expectEvent(tx, 'TokenPurchase', {
+          purchaser: holder1,
+          value: amount,
+          amount: tokenAmount
+        });
+        
+        const amountR = '2000000000000000000';
+        expectEvent(tx, 'Imburse', {
+          imbursePurchaser: holder1,
+          amount: amountR
+        });
+
         const balance1After = await web3.eth.getBalance(holder1);
         const token1balanceAfter = await token.balanceOf(holder1);
         
@@ -290,6 +314,14 @@ contract('CrowdSale', (accounts) => {
         const amount0 = web3.utils.toBN(web3.utils.toWei('2'));
 
         let tx = await crowdsale.buy({ from: holder0, value: amount0 });
+        const amount = '2000000000000000000';
+        const tokenAmount = '4000000000000000000';
+        
+        expectEvent(tx, 'TokenPurchase', {
+          purchaser: holder0,
+          value: amount,
+          amount: tokenAmount
+        });
         
         const amount1 = web3.utils.toBN(web3.utils.toWei('1'));
         const amountAllowed = web3.utils.toBN(web3.utils.toWei('0.5'));
@@ -298,6 +330,20 @@ contract('CrowdSale', (accounts) => {
         const token1balanceBefore = await token.balanceOf(holder1);
         
         tx = await crowdsale.buy({from: holder1, value: amount1});
+        const amountN = '500000000000000000';
+        const tokenAmountN = '1000000000000000000';
+        
+        expectEvent(tx, 'TokenPurchase', {
+          purchaser: holder1,
+          value: amountN,
+          amount: tokenAmountN
+        });
+        
+        const amountR = '500000000000000000';
+        expectEvent(tx, 'Imburse', {
+          imbursePurchaser: holder1,
+          amount: amountR
+        });
         
         const balance1After = await web3.eth.getBalance(holder1);
         const token1balanceAfter = await token.balanceOf(holder1);
@@ -376,7 +422,14 @@ contract('CrowdSale', (accounts) => {
         const token1balanceBefore = await token.balanceOf(holder1);
         
         let tx =await crowdsale.assignTokens(holder1, amount1, { from: adminWallet });
-        
+        const amount = '200000000000000000';
+        const tokenAmount = '400000000000000000';
+        expectEvent(tx, 'TokenPurchase', {
+          purchaser: holder1,
+          value: amount,
+          amount: tokenAmount
+        });
+
         const token1balanceAfter = await token.balanceOf(holder1);
         const balance1 = token1balanceAfter.sub(token1balanceBefore);
         console.log("balance1: " + balance1);

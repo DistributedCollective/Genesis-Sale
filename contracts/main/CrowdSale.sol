@@ -211,7 +211,7 @@ contract CrowdSale is Ownable {
         );
         CSOVToken tokenInstance = CSOVToken(token);
         tokenInstance.transfer(_investor, _numTokens);
-        emit TokenPurchase(_investor, rate, _amountWei);
+        emit TokenPurchase(_investor, _amountWei, _numTokens);
     }
 
     /**
