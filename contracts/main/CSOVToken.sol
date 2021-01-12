@@ -20,45 +20,43 @@ contract CSOVToken is ERC20, Ownable {
     string private constant SYMBOL = "CSOV"; // Token Symbol
 
     bool public isSaleEnded;
-    address payable saleSCAdmin;
     address payable saleWalletAdmin;
+    address payable saleAdmin;
+    address payable csovAdmin;
     bool public isSaleAdminsUpdate;
 
     /**
-     * @dev Sets the values for {name} and {symbol}, initializes {decimals} with
-     * a default value of 18.
-     *
-     * To select a different value for {decimals}, use {_setupDecimals}.
      *
      * All three of these values are immutable: they can only be set once during
      * construction.
      */
-    constructor(uint256 totalSupply_) public ERC20(NAME, SYMBOL) {
-        _mint(msg.sender, totalSupply_);
+    constructor(uint256 totalSupply_, address payable _csovAdmin)
+        public
+        ERC20(NAME, SYMBOL)
+    {
+        csovAdmin = _csovAdmin;
         isSaleEnded = false;
-        saleSCAdmin = msg.sender;
+        transferOwnership(_csovAdmin);
+        _mint(_csovAdmin, totalSupply_);
     }
 
     function saleClosure(bool _isSaleEnded) public {
-        require(
-            msg.sender == saleSCAdmin,
-            "Only saleSCAdmin can close the sale"
-        );
+        require(msg.sender == saleAdmin, "Only saleAdmin can close the sale");
         if (!isSaleEnded) {
             isSaleEnded = _isSaleEnded;
         }
     }
 
     function setSaleAdmins(
-        address payable _saleSCAdmin,
+        address payable _saleAdmin,
         address payable _saleWalletAdmin
     ) external onlyOwner {
-        saleSCAdmin = _saleSCAdmin;
+        saleAdmin = _saleAdmin;
         saleWalletAdmin = _saleWalletAdmin;
         isSaleAdminsUpdate = true;
         require(
-            transfer(_saleSCAdmin, balanceOf(msg.sender)),
-            "saleSCAdmin token transer failed"
+            transfer(saleAdmin, balanceOf(csovAdmin)),
+            "saleAdmin token transer failed"
         );
     }
 
@@ -78,7 +76,7 @@ contract CSOVToken is ERC20, Ownable {
         require(
             isSaleEnded ||
                 (msg.sender == owner()) ||
-                msg.sender == saleSCAdmin ||
+                msg.sender == saleAdmin ||
                 msg.sender == saleWalletAdmin,
             "Token Transfer is not allowed during the sale"
         );
@@ -93,7 +91,7 @@ contract CSOVToken is ERC20, Ownable {
         require(
             isSaleEnded ||
                 sender == owner() ||
-                sender == saleSCAdmin ||
+                sender == saleAdmin ||
                 sender == saleWalletAdmin,
             "Token Transfer is not allowed during the sale"
         );

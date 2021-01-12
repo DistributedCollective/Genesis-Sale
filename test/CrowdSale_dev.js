@@ -1,5 +1,5 @@
 //const { expectRevert, increaseTime } = require('@openzeppelin/test-helpers');
-const { expectRevert, time } = require('@openzeppelin/test-helpers');
+const { expect, expectRevert, time } = require('@openzeppelin/test-helpers');
 const CrowdSale = artifacts.require('main/CrowdSale.sol');
 const CSOVToken = artifacts.require('main/CSOVToken.sol');
 const NFTMockSetup = artifacts.require('mock/NFTMockSetup.sol');
@@ -32,6 +32,7 @@ contract('CrowdSale', (accounts) => {
   
   const sovrynAddress = accounts[4];
   const adminWallet = accounts[5];
+  const csovAdmin = accounts[6];
   
 //deploy NFTMockSetup
   before(async () => {
@@ -55,7 +56,7 @@ contract('CrowdSale', (accounts) => {
   */
   beforeEach (async () => {
 //deploy CSOVToken
-  token = await CSOVToken.new(totalSupply, {from: owner});
+  token = await CSOVToken.new(totalSupply, csovAdmin, {from: owner});
   tokenAddr = await token.address;
  
 //deploy CrowdSale
@@ -82,11 +83,14 @@ contract('CrowdSale', (accounts) => {
       );
     });  
     it('should setAdmins', async () => {   
-      const tokenbalanceBefore = await crowdsale.balanceOf(owner);
+      const tokenbalanceBefore = await crowdsale.balanceOf(csovAdmin);
       const salebalanceBefore = await crowdsale.balanceOf(saleAddress);
-      await token.setSaleAdmins(saleAddress, adminWallet,{ from: owner });
-      const tokenbalanceAfter = await crowdsale.balanceOf(owner);
+      
+      await token.setSaleAdmins(saleAddress, adminWallet, { from: csovAdmin });
+      
+      const tokenbalanceAfter = await crowdsale.balanceOf(csovAdmin);
       const salebalanceAfter = await crowdsale.balanceOf(saleAddress);
+      
       assert(salebalanceAfter.eq(web3.utils.toBN(totalSupply)));
       assert(salebalanceAfter.eq(tokenbalanceBefore));
       assert(salebalanceBefore.eq(tokenbalanceAfter));      
@@ -95,7 +99,7 @@ contract('CrowdSale', (accounts) => {
 
   describe("Fail Start", () => {
     it('should NOT start if crowdSaleSupply > totalSupply', async () => {
-      await token.setSaleAdmins(saleAddress, adminWallet,{ from: owner });
+      await token.setSaleAdmins(saleAddress, adminWallet,{ from: csovAdmin });
       
       crowdsalesupply = web3.utils.toWei('301');
       await expectRevert(
@@ -104,7 +108,7 @@ contract('CrowdSale', (accounts) => {
       );
     });
     it('should NOT start if not owner', async () => {
-      await token.setSaleAdmins(saleAddress, adminWallet,{ from: owner });
+      await token.setSaleAdmins(saleAddress, adminWallet,{ from: csovAdmin });
       crowdsalesupply = web3.utils.toWei('50');
       await expectRevert(
         crowdsale.start(duration, rate, minpurchase, crowdsalesupply, {from: accounts[2]}),
@@ -112,7 +116,7 @@ contract('CrowdSale', (accounts) => {
       );
     });
     it('should NOT start if miPurchase == 0', async () => {
-      await token.setSaleAdmins(saleAddress, adminWallet,{ from: owner });
+      await token.setSaleAdmins(saleAddress, adminWallet,{ from: csovAdmin });
       let minpurchaseNA = 0;
       await expectRevert(
         crowdsale.start(duration, rate, minpurchaseNA, crowdsalesupply, {from: owner}),
@@ -120,7 +124,7 @@ contract('CrowdSale', (accounts) => {
       );
     });
     it('should NOT start the CrowdSale if miPurchase >= crowdSaleSupply', async () => {
-      await token.setSaleAdmins(saleAddress, adminWallet,{ from: owner });
+      await token.setSaleAdmins(saleAddress, adminWallet,{ from: csovAdmin });
       minpurchaseNA = web3.utils.toWei('51');
       await expectRevert(
         crowdsale.start(duration, rate, minpurchaseNA, crowdsalesupply, {from: owner}),
@@ -128,7 +132,7 @@ contract('CrowdSale', (accounts) => {
       );
     });
     it('should Fail start after successful start', async () => {
-      await token.setSaleAdmins(saleAddress, adminWallet, { from: owner });
+      await token.setSaleAdmins(saleAddress, adminWallet, { from: csovAdmin });
       await crowdsale.start(duration, rate, minpurchase, crowdsalesupply, { from: owner });
       await expectRevert(
         crowdsale.start(duration, rate, minpurchase, crowdsalesupply, {from: owner}),
@@ -139,7 +143,7 @@ contract('CrowdSale', (accounts) => {
   
   describe("success Start", () => {
     it('should start the CrowdSale', async () => {
-      await token.setSaleAdmins(saleAddress, adminWallet,{ from: owner });
+      await token.setSaleAdmins(saleAddress, adminWallet,{ from: csovAdmin });
       crowdsalesupply = web3.utils.toWei('5');
   const start = parseInt((new Date()).getTime() / 1000);
 //  time.increaseTo(start +5);
@@ -162,7 +166,7 @@ contract('CrowdSale', (accounts) => {
   
   describe("BUY before START", () => {
     it('should fail BUY before Sale has started', async () => {
-      await token.setSaleAdmins(saleAddress, adminWallet,{ from: owner });
+      await token.setSaleAdmins(saleAddress, adminWallet,{ from: csovAdmin });
       
       await expectRevert(
         crowdsale.buy({from: accounts[2], value: web3.utils.toWei('0.2')}),
@@ -177,7 +181,7 @@ contract('CrowdSale', (accounts) => {
     beforeEach(async() => {
    //   start = parseInt((new Date()).getTime() / 1000);
    //   time.increaseTo(start);
-      await token.setSaleAdmins(saleAddress, adminWallet,{ from: owner }); 
+      await token.setSaleAdmins(saleAddress, adminWallet,{ from: csovAdmin }); 
       await crowdsale.start(duration, rate, minpurchase, crowdsalesupply, {from: owner});
     });
     describe("BUY", () => {
@@ -320,6 +324,80 @@ contract('CrowdSale', (accounts) => {
         assert(weiraised.eq(sumvalue));
       });
     });
+
+    describe("assignTokens", () => {
+      it('Should NOT assignTokens if not Admin', async () => {
+        const amount1 = web3.utils.toBN(web3.utils.toWei('0.2'));
+        await expectRevert(
+          crowdsale.assignTokens(holder1, amount1, { from: owner }),
+          'unauthorized'
+        );
+      });
+      
+      it('Should NOT assignTokens if sale not active', async () => {
+        await crowdsale.stopSale(true, { from: adminWallet });
+
+        const amount1 = web3.utils.toBN(web3.utils.toWei('0.2'));
+        await expectRevert(
+          crowdsale.assignTokens(holder1, amount1, { from: adminWallet }),
+          'Sale must be active'
+        );
+      });
+
+      it('Should NOT assignTokens if amount > maxPurchase', async () => {
+        const amount1 = web3.utils.toBN(web3.utils.toWei('2.1'));
+        await expectRevert(
+          crowdsale.assignTokens(holder1, amount1, { from: adminWallet }),
+          'investor already has too many tokens'
+        );
+      });
+      
+      it('Should NOT assignTokens if not enough available', async () => {
+        const amount1 = web3.utils.toBN(web3.utils.toWei('1'));
+        crowdsale.assignTokens(holder1, amount1, { from: adminWallet });
+
+        const amount2 = web3.utils.toBN(web3.utils.toWei('0.5'));
+        crowdsale.assignTokens(holder2, amount2, { from: adminWallet });
+       
+        const amount0 = web3.utils.toBN(web3.utils.toWei('1.5'));
+        await expectRevert(
+          crowdsale.assignTokens(holder0, amount0, { from: adminWallet }),
+          'amount needs to be smaller than the number of available tokens'
+        );
+      });
+
+
+      it('Should assignTokens', async () => {
+        const amount1 = web3.utils.toBN(web3.utils.toWei('0.2'));
+        const token1balanceBefore = await token.balanceOf(holder1);
+        
+        let tx =await crowdsale.assignTokens(holder1, amount1, { from: adminWallet });
+        
+        const token1balanceAfter = await token.balanceOf(holder1);
+        const balance1 = token1balanceAfter.sub(token1balanceBefore);
+        console.log("balance1: " + balance1);
+        assert(balance1.eq(amount1.mul(web3.utils.toBN(rate))));
+      });
+    }); 
+
+    describe("Stop the sale", () => {
+      it('Should NOT stop the sale - only Admin', async () => {
+        await expectRevert(
+          crowdsale.stopSale(true, { from: owner }),
+          'unauthorized'
+        );
+      });
+
+      it('Should stop the sale', async () => {
+        await crowdsale.stopSale(true, { from: adminWallet });
+
+        const amount1 = web3.utils.toBN(web3.utils.toWei('0.2'));
+        await expectRevert(
+           crowdsale.buy({ from: holder1, value: amount1 }),
+          'Sale must be active'
+        );
+      });  
+    }); 
 
     describe("Withdraw", () => {
       it('Should NOT Withdraw Tokens if not admin', async () => {

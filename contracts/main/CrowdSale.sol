@@ -9,16 +9,16 @@ import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 //import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/IERC20.sol";
 //import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/math/SafeMath.sol";
 //import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/Ownable.sol";
-
 import "./CSOVToken.sol";
 
 contract CrowdSale is Ownable {
     using SafeMath for uint256;
 
-    address[] NFTAddresses;
+    // the sum of all deposits per investor
+    mapping(address => uint256) public InvestorTotalDeposits;
     mapping(address => uint256) public MaxDepositPerNFT;
-    mapping(address => uint256) public InvestorTotalDeposits; // the sum of all deposits per investor
     address public token;
+    address[] public NFTAddresses;
     address payable public sovrynAddress;
     uint256 public end;
     // How many token units a buyer gets per wei
@@ -35,7 +35,7 @@ contract CrowdSale is Ownable {
     bool public isAdminsSet;
 
     /** the admin wallet is allowed to assign tokens to BTC investors*/
-    address payable public adminWallet;
+    address payable public admin;
 
     /**
      * Event for token purchase logging
@@ -44,7 +44,7 @@ contract CrowdSale is Ownable {
      * @param amount amount of tokens purchased
      */
     event TokenPurchase(
-        address payable indexed purchaser,
+        address indexed purchaser,
         uint256 value,
         uint256 amount
     );
@@ -60,12 +60,12 @@ contract CrowdSale is Ownable {
         address[] memory _NFTAddresses,
         uint256[] memory _maxDepositList,
         address payable _sovrynAddress,
-        address payable _adminWalletAddress
+        address payable _adminAddress
     ) public payable {
         token = _CSOVAddress;
         NFTAddresses = _NFTAddresses;
         sovrynAddress = _sovrynAddress;
-        adminWallet = _adminWalletAddress;
+        admin = _adminAddress;
         tokenTotalSupply = CSOVToken(token).totalSupply();
         saleEnded = false;
         for (uint256 i = 0; i < NFTAddresses.length; i++) {
@@ -80,14 +80,6 @@ contract CrowdSale is Ownable {
     }
 
     /**
-     * setAdmins setAdmins on CSOVToken
-     * */
-    //function setAdmins() external onlyOwner {
-    //    CSOVToken tokenInstance = CSOVToken(token);
-    //    isAdminsSet = tokenInstance.setSaleAdmins(payable(address(this)), adminWallet);
-    // }
-
-    /**
      * @dev   Owner starts the crowdsale
      * @param _duration - Duration of the sale
      * @param _rate - Number of token units a buyer gets per wei
@@ -99,7 +91,7 @@ contract CrowdSale is Ownable {
         uint256 _rate,
         uint256 _minPurchase,
         uint256 _crowdSaleSupply
-    ) external onlyOwner() saleNotActive() {
+    ) external onlyOwner saleNotActive {
         CSOVToken tokenInstance = CSOVToken(token);
         require(
             tokenInstance.isSaleAdminsUpdate() == true,
@@ -132,7 +124,7 @@ contract CrowdSale is Ownable {
      * @dev   B.Not enough available coins left for the sale
      * @dev    (Can happen only once during the sale, since sale will be closed once availbleTokens == 0)
      */
-    function buy() external payable saleActive() {
+    function buy() external payable saleActive {
         // Check Deposit RBTC deposit for requirements ==> depositAllowed
         require(
             msg.value >= minPurchase,
@@ -168,6 +160,10 @@ contract CrowdSale is Ownable {
                 .div(rate);
             tokenQuantityRequest = tokenQuantityAllowed;
         }
+
+        uint256 RBTCDepositRequest = (msg.value).sub(reimburseRBTC);
+        _processPurchase(msg.sender, RBTCDepositRequest, tokenQuantityRequest);
+        /*  git merge removed
         uint256 RBTCDepositRequest = (msg.value).sub(reimburseRBTC);
 
         // Update State variables
@@ -182,23 +178,68 @@ contract CrowdSale is Ownable {
         tokenQuantityRequest = 0;
         tokenInstance.transfer(msg.sender, tokenToSend);
         emit TokenPurchase(msg.sender, rate, RBTCDepositRequest);
-
+*/
         // Refund RBTC
         if (reimburseRBTC > 0) {
-            uint256 refundRBTC = reimburseRBTC;
-            reimburseRBTC = 0;
-            msg.sender.transfer(refundRBTC);
-            emit Imburse(msg.sender, refundRBTC);
+            msg.sender.transfer(reimburseRBTC);
+            emit Imburse(msg.sender, reimburseRBTC);
         }
     }
 
     /**
      * @notice assigns token to a BTC investor
      * @dev only callable by the admin
-     * @param _investor the address of the BTC _investor
-     * @param _amountBTC the amount of BTC transfered with 18 decimals
+     * @param _investor the address of the BTC investor
+     * @param _amountWei the amount of BTC transfered with 18 decimals
      * */
-    function assignTokens(address _investor, uint256 _amountBTC)
+    function assignTokens(address _investor, uint256 _amountWei)
+        external
+        onlyAdmin
+        saleActive
+    {
+        //no partial investments for btc investors to keep our accounting simple
+        uint256 maxPurchase = getMaxPurchase(_investor);
+        require(
+            maxPurchase >= _amountWei.add(InvestorTotalDeposits[_investor]),
+            "investor already has too many tokens"
+        );
+        uint256 numTokens = getTokenAmount(_amountWei);
+        require(
+            numTokens < availableTokens,
+            "amount needs to be smaller than the number of available tokens"
+        );
+        _processPurchase(_investor, _amountWei, numTokens);
+    }
+
+    /**
+     * @dev updates the state and transfers the tokens
+     * @param _investor the address of the investor
+     * @param _amountWei the investment amount in wei
+     * @param _numTokens the number of tokens
+     * */
+    function _processPurchase(
+        address _investor,
+        uint256 _amountWei,
+        uint256 _numTokens
+    ) internal {
+        availableTokens = availableTokens.sub(_numTokens);
+        weiRaised = weiRaised.add(_amountWei);
+        InvestorTotalDeposits[_investor] = InvestorTotalDeposits[_investor].add(
+            _amountWei
+        );
+        CSOVToken tokenInstance = CSOVToken(token);
+        tokenInstance.transfer(_investor, _numTokens);
+        emit TokenPurchase(_investor, rate, _amountWei);
+    }
+
+    //// Removed after git merge
+    /**
+     * notice assigns token to a BTC investor
+     * dev only callable by the admin
+     * param _investor the address of the BTC _investor
+     * param _amountBTC the amount of BTC transfered with 18 decimals
+     * */
+    /*   function assignTokens(address _investor, uint256 _amountBTC)
         external
         onlyAdmin()
         saleActive()
@@ -213,17 +254,7 @@ contract CrowdSale is Ownable {
         CSOVToken tokenInstance = CSOVToken(token);
         tokenInstance.transfer(_investor, numTokens);
     }
-
-    uint256 public NFTLength = NFTAddresses.length;
-
-    function help_func_nft_bal(address _NFT, address _user)
-        public
-        view
-        returns (uint256)
-    {
-        return (IERC721(_NFT).balanceOf(_user));
-    }
-
+*/
     /**
      * @dev   Add to whiteList and resolve max deposit of _investor
      * @param _investor address
@@ -272,7 +303,7 @@ contract CrowdSale is Ownable {
      * @dev   Withdraw /all Funds
      *
      */
-    function withdrawFunds() external onlyOwner() saleDone() {
+    function withdrawFunds() external onlyOwner saleDone {
         sovrynAddress.transfer(address(this).balance);
         // sovrynAddress.transfer(weiRaised);}
     }
@@ -282,16 +313,16 @@ contract CrowdSale is Ownable {
         return tokenInstance.balanceOf(_owner);
     }
 
-    function stopSale(bool _isStopSale) external onlyOwner() {
+    function stopSale(bool _isStopSale) external onlyAdmin {
         isStopSale = _isStopSale;
     }
 
-    function renounceOwnership() public override onlyOwner() {
+    function renounceOwnership() public override onlyOwner {
         require(1 == 0, "Disable function");
     }
 
     modifier onlyAdmin() {
-        require(msg.sender == adminWallet, "unauthorized");
+        require(msg.sender == admin, "unauthorized");
         _;
     }
 
@@ -303,7 +334,6 @@ contract CrowdSale is Ownable {
         );
         _;
     }
-
     modifier saleNotActive() {
         require(end == 0, "Sale should not be active");
         _;
