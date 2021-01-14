@@ -80,7 +80,7 @@ console.log(tokenAddr + "  " + NFAddr + "   " + maxpricelist + "   "+ sovrynAddr
       let crowdsalesupply = web3.utils.toWei('200');
       await expectRevert(
         crowdsale.start(duration, rate, minpurchase, crowdsalesupply, {from: owner}), 
-        'setAdmins before start'
+        'Need to call setSaleAdmin on CSOVToken before start'
       );
     });  
     it('should setAdmins', async () => {   
@@ -99,13 +99,8 @@ console.log(tokenAddr + "  " + NFAddr + "   " + maxpricelist + "   "+ sovrynAddr
 
     it('should set crowdSale btc wallet Admins', async () => {       
       await crowdsale.addAdmins(adminWallet, { from: owner });
-      console.log(" wallet admin 0 : "+ await crowdsale.isAdmin(0));
-      console.log(" wallet admin 0 : "+ await crowdsale.isAdmin(0));
-
-      
-      assert(salebalanceAfter.eq(web3.utils.toBN(totalSupply)));
-      assert(salebalanceAfter.eq(tokenbalanceBefore));
-      assert(salebalanceBefore.eq(tokenbalanceAfter));      
+      console.log(" wallet admin 0 : "+ await crowdsale.isAdmin(adminWallet[0]));
+      console.log(" wallet admin 1 : "+ await crowdsale.isAdmin(adminWallet[1]));
     });  
   }); 
 
@@ -156,6 +151,7 @@ console.log(tokenAddr + "  " + NFAddr + "   " + maxpricelist + "   "+ sovrynAddr
   describe("success Start", () => {
     it('should start the CrowdSale', async () => {
       await token.setSaleAdmin(saleAddress,{ from: csovAdmin });
+      await crowdsale.addAdmins(adminWallet, { from: owner });
       crowdsalesupply = web3.utils.toWei('5');
   const start = parseInt((new Date()).getTime() / 1000);
 //  time.increaseTo(start +5);
@@ -179,7 +175,8 @@ console.log(tokenAddr + "  " + NFAddr + "   " + maxpricelist + "   "+ sovrynAddr
   describe("BUY before START", () => {
     it('should fail BUY before Sale has started', async () => {
       await token.setSaleAdmin(saleAddress,{ from: csovAdmin });
-      
+      await crowdsale.addAdmins(adminWallet, { from: owner });
+
       await expectRevert(
         crowdsale.buy({from: accounts[2], value: web3.utils.toWei('0.2')}),
           'Sale must be active'
@@ -194,6 +191,8 @@ console.log(tokenAddr + "  " + NFAddr + "   " + maxpricelist + "   "+ sovrynAddr
    //   start = parseInt((new Date()).getTime() / 1000);
    //   time.increaseTo(start);
       await token.setSaleAdmin(saleAddress,{ from: csovAdmin }); 
+      await crowdsale.addAdmins(adminWallet, { from: owner });
+
       await crowdsale.start(duration, rate, minpurchase, crowdsalesupply, {from: owner});
     });
     describe("BUY", () => {
@@ -413,7 +412,7 @@ console.log(tokenAddr + "  " + NFAddr + "   " + maxpricelist + "   "+ sovrynAddr
           'investor already has too many tokens'
         );
       });
-      
+
       it('Should NOT assignTokens if not enough available', async () => {
         const amount1 = web3.utils.toBN(web3.utils.toWei('1'));
         crowdsale.assignTokens(holder1, amount1, { from: adminWallet[1] });
@@ -447,7 +446,7 @@ console.log(tokenAddr + "  " + NFAddr + "   " + maxpricelist + "   "+ sovrynAddr
         console.log("balance1: " + balance1);
         assert(balance1.eq(amount1.mul(web3.utils.toBN(rate))));
       });
-    }); 
+     
 
     it('Should assignTokens admin1', async () => {
       const amount1 = web3.utils.toBN(web3.utils.toWei('0.2'));
@@ -551,6 +550,6 @@ console.log(tokenAddr + "  " + NFAddr + "   " + maxpricelist + "   "+ sovrynAddr
       assert(balanceweiOutAfter-balanceweiOutBefore == amount1);
     });
   });
- });   
+ }); 
 });
 
