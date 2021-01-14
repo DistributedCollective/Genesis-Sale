@@ -5,7 +5,7 @@ import "openzeppelin-solidity/contracts/access/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
-//import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/IERC721.sol";
+//import "https://github.com/OpenZeppelin/openzeppelin-contra cts/blob/master/contracts/token/ERC721/IERC721.sol";
 //import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/IERC20.sol";
 //import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/math/SafeMath.sol";
 //import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/Ownable.sol";
@@ -17,6 +17,8 @@ contract CrowdSale is Ownable {
     // the sum of all deposits per investor
     mapping(address => uint256) public InvestorTotalDeposits;
     mapping(address => uint256) public MaxDepositPerNFT;
+/** Admin wallets allowed to assign tokens to BTC investors*/
+    mapping(address => bool) public isAdmin;
     address public token;
     address[] public NFTAddresses;
     address payable public sovrynAddress;
@@ -33,9 +35,6 @@ contract CrowdSale is Ownable {
     bool public saleEnded;
     bool public isStopSale;
 
-    /** the admin wallet is allowed to assign tokens to BTC investors*/
-    address payable public admin;
-
     /**
      * Event for token purchase logging
      * @param purchaser who paid for the tokens
@@ -49,7 +48,6 @@ contract CrowdSale is Ownable {
     );
     event Imburse(address payable indexed imbursePurchaser, uint256 amount);
     event CrowdSaleStarted(uint256 total, uint256 sale, uint256 minp);
-    event NewAdminSet(address payable admin, address payable newAdmin);
 
     /**
      ** maxDepositList[] - array of maxDeposit of RBTC (in wei) per NFT. maxDepositList[i] > maxDepositList[i+1]
@@ -59,13 +57,11 @@ contract CrowdSale is Ownable {
         address _CSOVAddress,
         address[] memory _NFTAddresses,
         uint256[] memory _maxDepositList,
-        address payable _sovrynAddress,
-        address payable _adminAddress
+        address payable _sovrynAddress
     ) public payable {
         token = _CSOVAddress;
         NFTAddresses = _NFTAddresses;
         sovrynAddress = _sovrynAddress;
-        admin = _adminAddress;
         tokenTotalSupply = CSOVToken(token).totalSupply();
 
         for (uint256 i = 0; i < NFTAddresses.length; i++) {
@@ -93,7 +89,7 @@ contract CrowdSale is Ownable {
         uint256 _crowdSaleSupply
     ) external onlyOwner saleNotActive {
         CSOVToken tokenInstance = CSOVToken(token);
-        require(tokenInstance.isSaleAdminsUpdate(), "setAdmins before start");
+        require(tokenInstance.isSaleAdminsUpdate(), "Need to call setSaleAdmin on CSOVToken before start");
         crowdSaleSupply = _crowdSaleSupply;
         require(0 < _minPurchase, "_minPurchase should be > 0");
         require(
@@ -170,7 +166,7 @@ contract CrowdSale is Ownable {
 
     /**
      * @notice assigns token to a BTC investor
-     * @dev only callable by the admin
+     * @dev only callable by the admins
      * @param _investor the address of the BTC investor
      * @param _amountWei the amount of BTC transfered with 18 decimals
      * */
@@ -284,14 +280,26 @@ contract CrowdSale is Ownable {
         revert("Disable function");
     }
 
-    function replaceAdmin(address payable newAdmin) external onlyOwner {
-        require(newAdmin != address(0), "New Admin cannot be the zero address");
-        emit NewAdminSet(admin, newAdmin);
-        admin = newAdmin;
+    function addAdmins(address[]  calldata Admins) external onlyOwner {
+        for(uint256 i = 0 ; i < Admins.length ; i++){
+            if(Admins[i] == address(0)) {
+                continue ;
+            }
+            isAdmin[Admins[i]] = true;
+        }
+    }
+
+    function removeAdmins(address[] calldata Admins) external onlyOwner {
+        for(uint256 i = 0 ; i < Admins.length ; i++){
+            if(Admins[i] == address(0)) {
+                continue;
+            }
+            isAdmin[Admins[i]] = false;
+        }
     }
 
     modifier onlyAdmin() {
-        require(msg.sender == admin, "unauthorized");
+        require(isAdmin[msg.sender], "unauthorized");
         _;
     }
 
