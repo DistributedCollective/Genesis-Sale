@@ -280,21 +280,21 @@ contract CrowdSale is Ownable {
         revert("Disable function");
     }
 
-    function addAdmins(address[]  calldata Admins) external onlyOwner {
-        for(uint256 i = 0 ; i < Admins.length ; i++){
-            if(Admins[i] == address(0)) {
+    function addAdmins(address[]  calldata admins) external onlyOwner {
+        for(uint256 i = 0 ; i < admins.length ; i++){
+            if(admins[i] == address(0)) {
                 continue ;
             }
-            isAdmin[Admins[i]] = true;
+            isAdmin[admins[i]] = true;
         }
     }
 
-    function removeAdmins(address[] calldata Admins) external onlyOwner {
-        for(uint256 i = 0 ; i < Admins.length ; i++){
-            if(Admins[i] == address(0)) {
+    function removeAdmins(address[] calldata admins) external onlyOwner {
+        for(uint256 i = 0 ; i < admins.length ; i++){
+            if(admins[i] == address(0)) {
                 continue;
             }
-            isAdmin[Admins[i]] = false;
+            isAdmin[admins[i]] = false;
         }
     }
 

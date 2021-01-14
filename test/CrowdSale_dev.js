@@ -31,7 +31,7 @@ contract('CrowdSale', (accounts) => {
   console.log("Owner: " + owner);
   
   const sovrynAddress = accounts[4];
-  const adminWallet = accounts[5];
+  const adminWallet = [accounts[5],accounts[7]];
   const csovAdmin = accounts[6];
   
 //deploy NFTMockSetup
@@ -65,9 +65,10 @@ contract('CrowdSale', (accounts) => {
       NFAddr,
       maxpricelist,
       sovrynAddress,
-      adminWallet,
+     // adminWallet,
       {from: owner}); 
 //console.log(tokenAddr + "  " + NFAddr + "   " + maxpricelist + "   "+ sovrynAddress+ "   "+ adminWallet);
+console.log(tokenAddr + "  " + NFAddr + "   " + maxpricelist + "   "+ sovrynAddress);
       saleAddress = await crowdsale.address;
 //console.log("Crowdsale Address: " + saleAddress);
   });
@@ -90,6 +91,17 @@ contract('CrowdSale', (accounts) => {
       
       const tokenbalanceAfter = await crowdsale.balanceOf(csovAdmin);
       const salebalanceAfter = await crowdsale.balanceOf(saleAddress);
+      
+      assert(salebalanceAfter.eq(web3.utils.toBN(totalSupply)));
+      assert(salebalanceAfter.eq(tokenbalanceBefore));
+      assert(salebalanceBefore.eq(tokenbalanceAfter));      
+    });  
+
+    it('should set crowdSale btc wallet Admins', async () => {       
+      await crowdsale.addAdmins(adminWallet, { from: owner });
+      console.log(" wallet admin 0 : "+ await crowdsale.isAdmin(0));
+      console.log(" wallet admin 0 : "+ await crowdsale.isAdmin(0));
+
       
       assert(salebalanceAfter.eq(web3.utils.toBN(totalSupply)));
       assert(salebalanceAfter.eq(tokenbalanceBefore));
@@ -385,11 +397,11 @@ contract('CrowdSale', (accounts) => {
       });
       
       it('Should NOT assignTokens if sale not active', async () => {
-        await crowdsale.stopSale(true, { from: adminWallet });
+        await crowdsale.stopSale(true, { from: adminWallet[0] });
 
         const amount1 = web3.utils.toBN(web3.utils.toWei('0.2'));
         await expectRevert(
-          crowdsale.assignTokens(holder1, amount1, { from: adminWallet }),
+          crowdsale.assignTokens(holder1, amount1, { from: adminWallet[0] }),
           'Sale must be active'
         );
       });
@@ -397,31 +409,31 @@ contract('CrowdSale', (accounts) => {
       it('Should NOT assignTokens if amount > maxPurchase', async () => {
         const amount1 = web3.utils.toBN(web3.utils.toWei('2.1'));
         await expectRevert(
-          crowdsale.assignTokens(holder1, amount1, { from: adminWallet }),
+          crowdsale.assignTokens(holder1, amount1, { from: adminWallet[1] }),
           'investor already has too many tokens'
         );
       });
       
       it('Should NOT assignTokens if not enough available', async () => {
         const amount1 = web3.utils.toBN(web3.utils.toWei('1'));
-        crowdsale.assignTokens(holder1, amount1, { from: adminWallet });
+        crowdsale.assignTokens(holder1, amount1, { from: adminWallet[1] });
 
         const amount2 = web3.utils.toBN(web3.utils.toWei('0.5'));
-        crowdsale.assignTokens(holder2, amount2, { from: adminWallet });
+        crowdsale.assignTokens(holder2, amount2, { from: adminWallet[1] });
        
         const amount0 = web3.utils.toBN(web3.utils.toWei('1.5'));
         await expectRevert(
-          crowdsale.assignTokens(holder0, amount0, { from: adminWallet }),
+          crowdsale.assignTokens(holder0, amount0, { from: adminWallet[1] }),
           'amount needs to be smaller than the number of available tokens'
         );
       });
 
 
-      it('Should assignTokens', async () => {
+      it('Should assignTokens admin0', async () => {
         const amount1 = web3.utils.toBN(web3.utils.toWei('0.2'));
         const token1balanceBefore = await token.balanceOf(holder1);
         
-        let tx =await crowdsale.assignTokens(holder1, amount1, { from: adminWallet });
+        let tx =await crowdsale.assignTokens(holder1, amount1, { from: [adminWallet[0]] });
         const amount = '200000000000000000';
         const tokenAmount = '400000000000000000';
         expectEvent(tx, 'TokenPurchase', {
@@ -437,6 +449,26 @@ contract('CrowdSale', (accounts) => {
       });
     }); 
 
+    it('Should assignTokens admin1', async () => {
+      const amount1 = web3.utils.toBN(web3.utils.toWei('0.2'));
+      const token1balanceBefore = await token.balanceOf(holder1);
+      
+      let tx =await crowdsale.assignTokens(holder1, amount1, { from: [adminWallet[1]] });
+      const amount = '200000000000000000';
+      const tokenAmount = '400000000000000000';
+      expectEvent(tx, 'TokenPurchase', {
+        purchaser: holder1,
+        value: amount,
+        amount: tokenAmount
+      });
+
+      const token1balanceAfter = await token.balanceOf(holder1);
+      const balance1 = token1balanceAfter.sub(token1balanceBefore);
+      console.log("balance1: " + balance1);
+      assert(balance1.eq(amount1.mul(web3.utils.toBN(rate))));
+    });
+  });
+
     describe("Stop the sale", () => {
       it('Should NOT stop the sale - only Admin', async () => {
         await expectRevert(
@@ -446,7 +478,7 @@ contract('CrowdSale', (accounts) => {
       });
 
       it('Should stop the sale', async () => {
-        await crowdsale.stopSale(true, { from: adminWallet });
+        await crowdsale.stopSale(true, { from: adminWallet[1] });
 
         const amount1 = web3.utils.toBN(web3.utils.toWei('0.2'));
         await expectRevert(
