@@ -17,7 +17,7 @@ contract CrowdSale is Ownable {
     // the sum of all deposits per investor
     mapping(address => uint256) public InvestorTotalDeposits;
     mapping(address => uint256) public MaxDepositPerNFT;
-/** Admin wallets allowed to assign tokens to BTC investors*/
+    /** Admin wallets allowed to assign tokens to BTC investors*/
     mapping(address => bool) public isAdmin;
     address public token;
     address[] public NFTAddresses;
@@ -89,7 +89,10 @@ contract CrowdSale is Ownable {
         uint256 _crowdSaleSupply
     ) external onlyOwner saleNotActive {
         CSOVToken tokenInstance = CSOVToken(token);
-        require(tokenInstance.isSaleAdminsUpdate(), "Need to call setSaleAdmin on CSOVToken before start");
+        require(
+            tokenInstance.isSaleAdminsUpdate(),
+            "Need to call setSaleAdmin on CSOVToken before start"
+        );
         crowdSaleSupply = _crowdSaleSupply;
         require(0 < _minPurchase, "_minPurchase should be > 0");
         require(
@@ -156,6 +159,9 @@ contract CrowdSale is Ownable {
 
         uint256 RBTCDepositRequest = (msg.value).sub(reimburseRBTC);
         _processPurchase(msg.sender, RBTCDepositRequest, tokenQuantityRequest);
+
+        //Transfer RBTC deposit to governorVault SC
+        sovrynAddress.transfer(RBTCDepositRequest);
 
         // Refund RBTC
         if (reimburseRBTC > 0) {
@@ -259,13 +265,13 @@ contract CrowdSale is Ownable {
     }
 
     /**
-     * @dev   Withdraw /all Funds
+     * @dev   Withdraw /all Funds - Function removed, handeled in Buy function on TX
      *
      */
-    function withdrawFunds() external onlyOwner saleDone {
-        sovrynAddress.transfer(address(this).balance);
-        // sovrynAddress.transfer(weiRaised);}
-    }
+    //function withdrawFunds() external onlyOwner saleDone {
+    //    sovrynAddress.transfer(address(this).balance);
+    //    // sovrynAddress.transfer(weiRaised);}
+    //}
 
     function balanceOf(address _owner) external view returns (uint256) {
         CSOVToken tokenInstance = CSOVToken(token);
@@ -280,18 +286,18 @@ contract CrowdSale is Ownable {
         revert("Disable function");
     }
 
-    function addAdmins(address[]  calldata admins) external onlyOwner {
-        for(uint256 i = 0 ; i < admins.length ; i++){
-            if(admins[i] == address(0)) {
-                continue ;
+    function addAdmins(address[] calldata admins) external onlyOwner {
+        for (uint256 i = 0; i < admins.length; i++) {
+            if (admins[i] == address(0)) {
+                continue;
             }
             isAdmin[admins[i]] = true;
         }
     }
 
     function removeAdmins(address[] calldata admins) external onlyOwner {
-        for(uint256 i = 0 ; i < admins.length ; i++){
-            if(admins[i] == address(0)) {
+        for (uint256 i = 0; i < admins.length; i++) {
+            if (admins[i] == address(0)) {
                 continue;
             }
             isAdmin[admins[i]] = false;

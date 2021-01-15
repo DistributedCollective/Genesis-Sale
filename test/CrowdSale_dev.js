@@ -258,6 +258,8 @@ console.log(tokenAddr + "  " + NFAddr + "   " + maxpricelist + "   "+ sovrynAddr
         const balance1Before = await web3.eth.getBalance(holder1);
         const token1balanceBefore = await token.balanceOf(holder1);
         
+        const rbtcBalanceVaultBefore = await web3.eth.getBalance(sovrynAddress);
+
         let tx = await crowdsale.buy({from: holder1, value: amount1});
         const amount = '500000000000000000';
         const tokenAmount = '1000000000000000000';
@@ -276,6 +278,10 @@ console.log(tokenAddr + "  " + NFAddr + "   " + maxpricelist + "   "+ sovrynAddr
         const amount1WithGas = amount1.add(gasSpent);
         const balance1 = token1balanceAfter.sub(token1balanceBefore);
         const delta = balance1Before - balance1After ;
+
+        const rbtcBalanceVaultAfter = await web3.eth.getBalance(sovrynAddress);
+        console.log("Vault rbtc balance before 0.5 RBTC deposit "+  rbtcBalanceVaultBefore);
+        console.log("Vault rbtc balance After 0.5 RBTC deposit "+  rbtcBalanceVaultAfter);
 
         // Add small margin for mismatch in calculation
         assert((delta - amount1WithGas < 5000000) &&  (delta - amount1WithGas > (-5000000) ));

@@ -3,6 +3,7 @@ const CrowdSale = artifacts.require("CrowdSale");
 
 const SovrynAddr = '0xE8276A1680CB970c2334B3201044Ddf7c492F52A';
 const csovAdmin = '0x0E9fb5B82bD46320d811104542EEE4209536978a'; 
+
 const NFTs = [
     '0x78c0D49d003bf0A88EA6dF729B7a2AD133B9Ae25',
     '0x420fECFda0975c49Fd0026f076B302064ED9C6Ff',
