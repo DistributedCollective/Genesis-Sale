@@ -37,13 +37,25 @@ module.exports = {
                 default_balance_ether: 10000000000000000000
             })
         },
+        mainnet: {
+            //provider: () => new HDWalletProvider(secrets.seed, 'https://public-node.testnet.rsk.co/2.0.1/'),
+            //provider: () => new HDWalletProvider(secrets.seed, "https://testnet.sovryn.app/rpc"),
+            provider: () => new HDWalletProvider(secrets.seed, "wss://mainnet.sovryn.app/ws"),
+            network_id: 30,
+              gasPrice: 65000010,
+              gas: 3000000,
+              networkCheckTimeout: 1e9,
+              timeoutBlocks: 500000
+        },
         testnet: {
           //provider: () => new HDWalletProvider(secrets.seed, 'https://public-node.testnet.rsk.co/2.0.1/'),
           //provider: () => new HDWalletProvider(secrets.seed, "https://testnet.sovryn.app/rpc"),
-          provider: () => new HDWalletProvider(secrets.seed, "wss://testnet.sovryn.app/ws"),
+          provider: () => new HDWalletProvider(secrets.seedtestnet, "wss://testnet.sovryn.app/ws"),
           network_id: 31,
-            gasPrice: 70000000,
-            gas: 5900000,
+            //gasPrice: 70000000,
+            gasPrice: 65000010,
+            //gas: 5900000,
+            gas: 3000000,
             networkCheckTimeout: 1e9,
             timeoutBlocks: 500000
 
