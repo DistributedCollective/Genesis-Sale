@@ -6,7 +6,8 @@ const CSOVToken = artifacts.require('main/CSOVToken.sol');
 
 contract('PostCSOV', (accounts) => {
   let postcsov;
-  let token;
+  let token1;
+  let token2;
   let tokenAddr;
   let postcsovAddr;
   
@@ -19,18 +20,27 @@ contract('PostCSOV', (accounts) => {
   const pricsSats = '2500';
 
   beforeEach (async () => {
-//deploy CSOVToken
-  token = await CSOVToken.new(totalSupply, csovAdmin, {from: owner});
-  tokenAddr = await token.address;
+//deploy CSOVToken1
+  token1 = await CSOVToken.new(totalSupply, csovAdmin, {from: owner});
+  tokenAddr1 = await token1.address;
 
-    await token.transfer(accounts[2], amountUser, { from: csovAdmin });
+    await token1.transfer(accounts[2], amountUser, { from: csovAdmin });
   
-  let CSOVAmountWei = await token.balanceOf(accounts[2]);
+  let CSOVAmountWei = await token1.balanceOf(accounts[2]);
   console.log("CSOVAmountWei: " + CSOVAmountWei);
 
+//deploy CSOVToken2
+  token2 = await CSOVToken.new(totalSupply, csovAdmin, {from: owner});
+  tokenAddr2 = await token2.address;
+
+    await token2.transfer(accounts[2], amountUser, { from: csovAdmin });
+
+   CSOVAmountWei = await token2.balanceOf(accounts[2]);
+  console.log("CSOVAmountWei: " + CSOVAmountWei);  
+
 //deploy PostCSOV
-  postcsov = await PostCSOV.new(tokenAddr,pricsSats, {from: owner});      
-  console.log(tokenAddr + "  " + pricsSats );
+  postcsov = await PostCSOV.new([tokenAddr1, tokenAddr2],pricsSats, {from: owner});      
+  console.log(tokenAddr1 + "  " + tokenAddr2 + "  " + pricsSats );
   postcsovAddr = await postcsov.address;
 });
 
@@ -58,18 +68,22 @@ contract('PostCSOV', (accounts) => {
       postBudget = await postcsov.budget();
       console.log("postBudget: " + postBudget);
       
-      let CSOVAmountWei = await token.balanceOf(accounts[2]);
-      console.log("CSOVAmountWei: " + CSOVAmountWei);
+      let CSOVAmountWei1 = await token1.balanceOf(accounts[2]);
+      console.log("CSOVAmountWei1: " + CSOVAmountWei1);
+
+      let CSOVAmountWei2 = await token2.balanceOf(accounts[2]);
+      console.log("CSOVAmountWei2: " + CSOVAmountWei2);
+
 
       let tx = await postcsov.reImburse(accounts[2]);
 
-      let rbtcAmount = (CSOVAmountWei * pricsSats)/(10 ** 10);
+      let rbtcAmount = ((CSOVAmountWei1+CSOVAmountWei2) * pricsSats)/(10 ** 10);
       console.log("rbtcAmount: " + rbtcAmount);
 
       expectEvent(tx, 'CSOVReImburse', {
         from: accounts[2],
-        CSOVamount: '3000000000000000000',
-        reImburseAmount: '750000000000'
+        CSOVamount: '6000000000000000000',
+        reImburseAmount: '1500000000000'
       });
     });
 
@@ -83,12 +97,15 @@ contract('PostCSOV', (accounts) => {
       postBudget = await postcsov.budget();
       console.log("postBudget: " + postBudget);
       
-      let CSOVAmountWei = await token.balanceOf(accounts[2]);
-      console.log("CSOVAmountWei: " + CSOVAmountWei);
+      let CSOVAmountWei1 = await token1.balanceOf(accounts[2]);
+      console.log("CSOVAmountWei1: " + CSOVAmountWei1);
+
+      let CSOVAmountWei2 = await token2.balanceOf(accounts[2]);
+      console.log("CSOVAmountWei2: " + CSOVAmountWei2);
 
       let tx = await postcsov.reImburse(accounts[2]);
 
-      let rbtcAmount = (CSOVAmountWei * pricsSats)/(10 ** 10);
+      let rbtcAmount = ((CSOVAmountWei1+CSOVAmountWei2) * pricsSats)/(10 ** 10);
       console.log("rbtcAmount: " + rbtcAmount);
 
       await expectRevert(
@@ -98,8 +115,8 @@ contract('PostCSOV', (accounts) => {
 
       expectEvent(tx, 'CSOVReImburse', {
         from: accounts[2],
-        CSOVamount: '3000000000000000000',
-        reImburseAmount: '750000000000'
+        CSOVamount: '6000000000000000000',
+        reImburseAmount: '1500000000000'
       });
 
       await expectRevert(
@@ -112,11 +129,16 @@ contract('PostCSOV', (accounts) => {
       let postBudget = await postcsov.budget();
       console.log("postBudget: " + postBudget);
 
-      let CSOVAmountWei = token.balanceOf(accounts[3]);
+      let CSOVAmountWei1 = await token1.balanceOf(accounts[3]);
+      console.log("CSOVAmountWei1: " + CSOVAmountWei1);
+
+      let CSOVAmountWei2 = await token2.balanceOf(accounts[3]);
+      console.log("CSOVAmountWei2: " + CSOVAmountWei2);
       
       postBudget = await postcsov.budget();
       console.log("postBudget: " + postBudget);
-      console.log("CSOVAmountWei: " + CSOVAmountWei);
+      console.log("CSOVAmountWei1: " + CSOVAmountWei1);
+      console.log("CSOVAmountWei2: " + CSOVAmountWei2);
 
       await expectRevert(
         postcsov.reImburse(accounts[3]),

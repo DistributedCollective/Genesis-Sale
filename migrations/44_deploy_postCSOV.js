@@ -5,8 +5,9 @@ const csovAdmin = '0x763e73385c790f2fe2354d877ff98431ee586e4e';
 const pricsSats = '2500';
     
 module.exports = async function (deployer) {
-      CSOVTokenInstance = await deployToken(deployer);
-      postcsov = await deploypostCSOV(deployer, CSOVTokenInstance.address);
+      CSOVTokenInstance1 = await deployToken(deployer);
+      CSOVTokenInstance2 = await deployToken(deployer);
+      postcsov = await deploypostCSOV(deployer, [CSOVTokenInstance1.address , CSOVTokenInstance2.address]);
 }
 
 async function deployToken(deployer){
@@ -22,6 +23,6 @@ async function deploypostCSOV(deployer, CSOVAddress){
     await deployer.deploy(PostCSOV,CSOVAddress, pricsSats);
     let postcsov = await PostCSOV.deployed();
     let postcsovAddr = await postcsov.address;
-    console.log("CrowdSale address: " + postcsovAddr);
+    console.log("PostCSOV address: " + postcsovAddr);
     return postcsov;
 }

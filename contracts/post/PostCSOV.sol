@@ -22,10 +22,10 @@ contract PostCSOV is Ownable {
     /*
      *  Storage
      */
-    address private token;
+    address[] public tokens;
     uint256 public priceSats;
     mapping(address => bool) public processedList;
-    uint256 public reImburceAmount;
+    uint256 public reImburseAmount;
 
     /*
      *  Events
@@ -38,11 +38,11 @@ contract PostCSOV is Ownable {
 
     /**
      * @dev Constructor sets CSOV address and price
-     * @param _token CSOV address
+     * @param _tokens CSOV addresses
      * @param _priceSats sats per CSOV token - presale price is 2500 sats
      */
-    constructor(address _token, uint256 _priceSats) public {
-        token = _token;
+    constructor(address[] memory _tokens, uint256 _priceSats) public {
+        tokens = _tokens;
         priceSats = _priceSats;
     }
 
@@ -51,14 +51,24 @@ contract PostCSOV is Ownable {
      * @param holder address of CSOV holder
      */
     function reImburse(address payable holder) public isNotProcessed(holder) {
-        uint256 CSOVAmountWei = CSOVToken(token).balanceOf(holder);
+        uint256 CSOVAmountWei = 0;
+        for (uint256 i = 0; i < tokens.length; i++) {
+            address CSOV = tokens[i];
+            uint256 balance = CSOVToken(CSOV).balanceOf(holder);
+            CSOVAmountWei = CSOVAmountWei.add(balance);
+        }
+
         require(CSOVAmountWei > 0, "holder has no CSOV");
         processedList[holder] = true;
 
-        reImburceAmount = (CSOVAmountWei.mul(priceSats)).div(10**10);
-        holder.transfer(reImburceAmount);
+        reImburseAmount = (CSOVAmountWei.mul(priceSats)).div(10**10);
+        require(
+            address(this).balance >= reImburseAmount,
+            "Not enough funds to reimburse"
+        );
+        holder.transfer(reImburseAmount);
 
-        emit CSOVReImburse(holder, CSOVAmountWei, reImburceAmount);
+        emit CSOVReImburse(holder, CSOVAmountWei, reImburseAmount);
     }
 
     function budget() external view returns (uint256) {
