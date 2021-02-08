@@ -1,13 +1,20 @@
 const PostCSOV = artifacts.require('post/PostCSOV.sol');
 const CSOVToken = artifacts.require('main/CSOVToken.sol');
 
-const csovAdmin = '0x763e73385c790f2fe2354d877ff98431ee586e4e'; 
+//const csovAdmin = '0x763e73385c790f2fe2354d877ff98431ee586e4e'; 
+const csovAdmin = '0xD428B98b65f1F607cCFfd5428de0B2B5fb7D0219'; 
 const pricsSats = '2500';
     
+
 module.exports = async function (deployer) {
       CSOVTokenInstance1 = await deployToken(deployer);
       CSOVTokenInstance2 = await deployToken(deployer);
-      postcsov = await deploypostCSOV(deployer, [CSOVTokenInstance1.address , CSOVTokenInstance2.address]);
+      const addr1 = CSOVTokenInstance1.address;
+      const addr2 = CSOVTokenInstance2.address;
+
+      postcsov = await deploypostCSOV(deployer, [addr1 , addr2]);
+      console.log("CSOVTokenInstance1: " + addr1 + "   " + "CSOVTokenInstance2: " + addr2);
+
 }
 
 async function deployToken(deployer){
