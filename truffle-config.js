@@ -50,7 +50,7 @@ module.exports = {
         testnet: {
           //provider: () => new HDWalletProvider(secrets.seed, 'https://public-node.testnet.rsk.co/2.0.1/'),
           //provider: () => new HDWalletProvider(secrets.seed, "https://testnet.sovryn.app/rpc"),
-          provider: () => new HDWalletProvider(secrets.seedtestnet, "wss://testnet.sovryn.app/ws"),
+          provider: () => new HDWalletProvider(secrets.seedtestnet, "wss://testnet.sovryn.app/websocket"),
           network_id: 31,
             //gasPrice: 70000000,
             gasPrice: 65000010,
