@@ -4,3 +4,6 @@ build/
 rskdeployer
 .secrets
 NOTUSED/
+temp/
+package-lock.json
+
